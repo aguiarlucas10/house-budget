@@ -1071,21 +1071,80 @@ function splitCSV(line) {
 
 function parsarCSV(texto, banco) {
   const ls=texto.trim().split('\n').map(l=>l.replace(/\r/,''))
+  // Helper: parse DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD
+  function parseData(s) {
+    s = (s||'').trim()
+    if(!s) return ''
+    if(s.includes('/')) {
+      const p=s.split('/');
+      if(p.length===3) return p[2].length===4?`${p[2]}-${p[1]}-${p[0]}`:`20${p[2]}-${p[1]}-${p[0]}`
+    }
+    return s
+  }
+
+  const ignorarC6 = ['pagamento fatura','estorno tarifa','inclusao de pagamento','anuidade diferenciada','credito concedido']
+
   const parsers={
-    nubank: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{const c=splitCSV(l);const v=parseFloat((c[2]||'0').replace(/[^0-9.\-]/g,''))||0;return{data:c[0]?.trim(),desc:c[1]?.trim(),valor:Math.abs(v),banco:'Nubank'}}).filter(r=>r.desc&&r.valor>0),
-    xp: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{const c=splitCSV(l);const v=parseFloat((c[2]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0;return{data:c[0]?.trim(),desc:c[1]?.trim(),valor:Math.abs(v),banco:'XP'}}).filter(r=>r.desc&&r.valor>0),
-    c6: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{const c=splitCSV(l);const v=parseFloat((c[3]||c[2]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0;return{data:c[0]?.trim(),desc:c[1]?.trim(),valor:Math.abs(v),banco:'C6'}}).filter(r=>r.desc&&r.valor>0),
-    mercadopago: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{const c=splitCSV(l);const v=parseFloat((c[c.length-1]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0;return{data:c[0]?.trim(),desc:(c[2]||c[1]||'').trim(),valor:Math.abs(v),banco:'Mercado Pago'}}).filter(r=>r.desc&&r.valor>0),
+    // Nubank: date,title,amount  (comma, quoted fields, YYYY-MM-DD)
+    nubank: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{
+      const c=splitCSV(l)
+      const v=parseFloat((c[2]||'0').replace(/[^0-9.\-]/g,''))||0
+      return{data:c[0]?.trim(),desc:c[1]?.trim(),valor:Math.abs(v),banco:'Nubank'}
+    }).filter(r=>r.desc&&r.valor>0),
+
+    // XP: Data;Estabelecimento;Portador;Valor;Parcela  (semicolon, BOM UTF-8)
+    // Valor format: "R$ 123,66"
+    xp: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{
+      const c=l.replace(/\r/,'').split(';')
+      const desc=(c[1]||'').trim()
+      if(!desc||desc==='Estabelecimento') return null
+      const valStr=(c[3]||'').replace('R$','').replace(/\s/g,'').replace(/\./g,'').replace(',','.')
+      const v=parseFloat(valStr)||0
+      if(v<=0) return null
+      return{data:parseData(c[0]),desc,valor:v,banco:'XP'}
+    }).filter(Boolean),
+
+    // C6: Data de Compra;Nome;Final;Categoria;Descrição;Parcela;USD;Cotação;Valor(R$)
+    // Valor is float in cols[8], negative = payments (ignore)
+    c6: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{
+      const c=l.replace(/\r/,'').split(';')
+      if(c.length<9) return null
+      const desc=(c[4]||'').trim()
+      const descL=desc.toLowerCase()
+      if(!desc||ignorarC6.some(ig=>descL.includes(ig))) return null
+      const v=parseFloat((c[8]||'0').replace(',','.'))||0
+      if(v<=0) return null
+      return{data:parseData(c[0]),desc,valor:v,banco:'C6'}
+    }).filter(Boolean),
+
+    // Mercado Pago CSV (if ever available): generic fallback
+    mercadopago: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{
+      const c=splitCSV(l)
+      const v=parseFloat((c[c.length-1]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0
+      return{data:c[0]?.trim(),desc:(c[2]||c[1]||'').trim(),valor:Math.abs(v),banco:'Mercado Pago'}
+    }).filter(r=>r.desc&&r.valor>0),
   }
   return ((parsers[banco]||parsers.nubank)(ls)).map(r=>({...r,categoria:categorizarAuto(r.desc)}))
 }
 
 function detectarBanco(texto,nome){
-  const t=(nome+texto.slice(0,300)).toLowerCase()
+  const t=(nome+texto.slice(0,400)).toLowerCase()
+  const nLower=nome.toLowerCase()
+  // By filename
+  if(nLower.includes('nubank')) return 'nubank'
+  if(nLower.includes('c6')||nLower.includes('c6bank')) return 'c6'
+  if(nLower.match(/fatura[_-]?\d{4}/)) return 'xp'  // XP filename pattern: Fatura_YYYY or Fatura2026
+  // By content
   if(t.includes('nubank')) return 'nubank'
-  if(t.includes('c6bank')||t.includes('c6 bank')) return 'c6'
-  if(t.includes('mercado pago')) return 'mercadopago'
-  if(t.includes('xp investimentos')||nome.toLowerCase().includes('xp')) return 'xp'
+  if(t.includes('estabelecimento;portador;valor;parcela')||t.includes('estabelecimento')) return 'xp'
+  if(t.includes('data de compra;nome no cart')||t.includes('cotacao')||t.includes('cotação')) return 'c6'
+  if(t.includes('mercado pago')||t.includes('mercadopago')) return 'mercadopago'
+  // By CSV structure: check first line separator
+  const firstLine=texto.split('\n')[0]||''
+  if(firstLine.includes(';')) {
+    if(firstLine.includes('Estabelecimento')) return 'xp'
+    if(firstLine.includes('Descri')) return 'c6'
+  }
   return 'nubank'
 }
 
