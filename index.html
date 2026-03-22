@@ -133,10 +133,10 @@ tr:hover td{background:var(--surface2)}
       </div>
       <div class="field-row">
         <label>Senha</label>
-        <input class="input" type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+        <input class="input" type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')window.doLogin()"/>
       </div>
       <div class="err" id="login-err"></div>
-      <button class="btn btn-primary" id="login-btn" onclick="doLogin()" style="width:100%;justify-content:center;margin-top:8px;padding:10px">
+      <button class="btn btn-primary" id="login-btn" onclick="window.doLogin()" style="width:100%;justify-content:center;margin-top:8px;padding:10px">
         Entrar
       </button>
     </div>
@@ -157,7 +157,7 @@ tr:hover td{background:var(--surface2)}
         <div class="avatar" id="user-avatar">?</div>
         <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="user-name">—</div>
       </div>
-      <button class="btn btn-sm" onclick="doLogout()" style="width:100%;justify-content:center">Sair</button>
+      <button class="btn btn-sm" onclick="window.doLogout()" style="width:100%;justify-content:center">Sair</button>
     </div>
   </aside>
   <main id="main"><div class="loading"><div class="spinner"></div>Carregando...</div></main>
@@ -176,6 +176,15 @@ tr:hover td{background:var(--surface2)}
 </div>
 
 <!-- FIREBASE SDK -->
+<script>
+// Safety stubs until Firebase module loads
+['doLogin','doLogout','goPage','openModal','closeModal','saveModal',
+ 'deleteItem','updateStatus','openEditModal','saveEditModal',
+ 'saveFinanciamento','saveConsorcio','saveReserva','atualizarCatCartao',
+ 'updateLance','calcViagem','importarCSV','setFiltroAnalise',
+ 'recategorizar','removerLancamento','limparDuplicatas','limparDados','salvarNoFirebase'
+].forEach(fn => { if(!window[fn]) window[fn] = (...a) => console.warn(fn+' not ready yet') })
+</script>
 <script type="module">
 // ─── CONFIGURAÇÃO ─────────────────────────────────────────────────────────────
 // 1. Acesse console.firebase.google.com
@@ -1368,7 +1377,7 @@ window.salvarNoFirebase = async () => {
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
-const bycat = cat => state.contas.filter(c=>c.cat===cat).reduce((s,c)=>s+Number(c.valor),0)
+
 
 </script>
 <!-- CHART.JS -->
