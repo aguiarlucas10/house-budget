@@ -439,17 +439,8 @@ function renderDashboard() {
   const proxMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 1)
   const proxMesStr = proxMes.getFullYear()+'-'+String(proxMes.getMonth()+1).padStart(2,'0')
   const parcelasFuturas = (()=>{
-    // Deduplica: só o lançamento mais recente de cada compra parcelada
-    const raw = analiseState.lancamentos.filter(l=>l.parcela)
-    const maiorP = {}
-    raw.forEach(l=>{
-      const m=l.parcela.match(/(\d+)\s+de\s+(\d+)/i)
-      if(!m) return
-      const atual=parseInt(m[1]),total=parseInt(m[2])
-      const chave=`${(l.desc||'').trim().toLowerCase()}|${l.banco||''}|${total}`
-      if(!maiorP[chave]||atual>maiorP[chave].atual) maiorP[chave]={...l,atual,total}
-    })
-    return Object.values(maiorP).filter(l=>l.total-l.atual>=1).reduce((s,l)=>s+l.valor,0)
+    const {deduped} = projetarParcelasFuturas(analiseState.lancamentos)
+    return deduped.filter(l=>l.total-l.atual>=1).reduce((s,l)=>s+l.valor,0)
   })()
   return `
   <div class="page-title">Painel geral</div>
@@ -743,35 +734,8 @@ function renderCartao() {
   const cats = doMes.reduce((acc,l)=>{acc[l.categoria]=(acc[l.categoria]||0)+Number(l.valor);return acc},{})
   const catsSorted = Object.entries(cats).sort((a,b)=>b[1]-a[1])
 
-  // Parcelas futuras — deduplica: para cada compra parcelada única,
-  // usa APENAS o lançamento mais recente (maior nº de parcela) de cada banco.
-  // Chave de deduplicação: desc + banco + total_parcelas
-  const parceladasRaw = ls.filter(l=>l.parcela)
-  const maiorParcela = {} // chave -> lançamento com maior parcela atual
-  parceladasRaw.forEach(l=>{
-    const m=l.parcela.match(/(\d+)\s+de\s+(\d+)/i)
-    if(!m) return
-    const atual=parseInt(m[1]),total=parseInt(m[2])
-    const chave=`${(l.desc||'').trim().toLowerCase()}|${l.banco||''}|${total}`
-    if(!maiorParcela[chave] || atual > maiorParcela[chave].atual) {
-      maiorParcela[chave]={...l, atual, total}
-    }
-  })
-  const parceladas = Object.values(maiorParcela)
-  const hoje = new Date()
-  const futuro = {}      // mes -> total
-  const futuroItens = {} // mes -> [{desc, valor, parcela, banco}]
-  parceladas.forEach(l=>{
-    const restantes = l.total - l.atual
-    if(restantes <= 0) return
-    for(let i=1;i<=restantes;i++){
-      const d=new Date(hoje.getFullYear(),hoje.getMonth()+i,1)
-      const mes=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
-      futuro[mes]=(futuro[mes]||0)+l.valor
-      if(!futuroItens[mes]) futuroItens[mes]=[]
-      futuroItens[mes].push({desc:l.desc,valor:l.valor,parcela:`${l.atual+i} de ${l.total}`,banco:l.banco||''})
-    }
-  })
+  // Parcelas futuras — usa helper deduplicado
+  const {futuro, futuroItens, deduped: parceladas} = projetarParcelasFuturas(ls)
   const mesesFut = Object.entries(futuro).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,6)
 
   // Por banco
@@ -1345,6 +1309,45 @@ function detectarDuplicatas(lista){
   return dups
 }
 
+
+// ─── HELPER: deduplica parcelas (mantém só a mais recente de cada compra) ────
+function deduplicarParcelas(lancamentos) {
+  const raw = lancamentos.filter(l => l.parcela)
+  const maiorParcela = {}
+  raw.forEach(l => {
+    const m = l.parcela.match(/(\d+)\s+de\s+(\d+)/i)
+    if (!m) return
+    const atual = parseInt(m[1]), total = parseInt(m[2])
+    const chave = `${(l.desc||'').trim().toLowerCase()}|${l.banco||''}|${total}`
+    if (!maiorParcela[chave] || atual > maiorParcela[chave].atual)
+      maiorParcela[chave] = {...l, atual, total}
+  })
+  return Object.values(maiorParcela)
+}
+
+function projetarParcelasFuturas(lancamentos) {
+  const deduped = deduplicarParcelas(lancamentos)
+  const hoje = new Date()
+  const futuro = {}      // mes -> total
+  const futuroItens = {} // mes -> [{desc, valor, parcela, banco}]
+  deduped.forEach(l => {
+    const restantes = l.total - l.atual
+    if (restantes <= 0) return
+    for (let i = 1; i <= restantes; i++) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1)
+      const mes = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+      futuro[mes] = (futuro[mes] || 0) + l.valor
+      if (!futuroItens[mes]) futuroItens[mes] = []
+      futuroItens[mes].push({
+        desc: l.desc, valor: l.valor,
+        parcela: `${l.atual + i} de ${l.total}`,
+        banco: l.banco || ''
+      })
+    }
+  })
+  return {futuro, futuroItens, deduped}
+}
+
 let analiseState={lancamentos:[],filtroMes:'todos',filtroBanco:'todos',filtroCat:'todas',chartMes:null,chartCat:null}
 
 function renderAnalise(){
@@ -1459,28 +1462,15 @@ function renderAnaliseConteudo(){
   </div>
   ${alertas.map(a=>`<div class="alert a-warn">Alerta: <strong>${a.cat}</strong> — ${fmt(a.total)} vs. média ${fmt(medC[a.cat])} (+${(((a.total/medC[a.cat])-1)*100).toFixed(0)}%)</div>`).join('')}
   ${(()=>{
-    const parceladas=ls.filter(l=>l.parcela)
-    if(!parceladas.length) return ''
-    const hoje=new Date()
-    const futuro={}
-    parceladas.forEach(l=>{
-      const m=l.parcela.match(/(\d+)\s+de\s+(\d+)/i)
-      if(!m) return
-      const atual=parseInt(m[1]),total=parseInt(m[2]),restantes=total-atual
-      if(restantes<=0) return
-      for(let i=1;i<=restantes;i++){
-        const d=new Date(hoje.getFullYear(),hoje.getMonth()+i,1)
-        const mes=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
-        futuro[mes]=(futuro[mes]||0)+l.valor
-      }
-    })
-    const mesesFut=Object.entries(futuro).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,6)
+    const {futuro: futA, deduped: parceladas}=projetarParcelasFuturas(ls)
+    if(!Object.keys(futA).length) return ''
+    const mesesFut=Object.entries(futA).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,6)
     if(!mesesFut.length) return ''
     return '<div class="card" style="border-color:var(--info)">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
         '<div>'+
           '<div class="section-title" style="margin:0;color:var(--info)">Parcelas futuras comprometidas</div>'+
-          '<div style="font-size:12px;color:var(--text3);margin-top:2px">'+parceladas.length+' compras parceladas nos extratos importados</div>'+
+          '<div style="font-size:12px;color:var(--text3);margin-top:2px">'+parceladas.length+' compras parceladas únicas</div>'+
         '</div>'+
       '</div>'+
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">'+
