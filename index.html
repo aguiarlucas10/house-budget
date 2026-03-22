@@ -439,15 +439,17 @@ function renderDashboard() {
   const proxMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 1)
   const proxMesStr = proxMes.getFullYear()+'-'+String(proxMes.getMonth()+1).padStart(2,'0')
   const parcelasFuturas = (()=>{
-    const parceladas = analiseState.lancamentos.filter(l=>l.parcela)
-    let total = 0
-    parceladas.forEach(l=>{
+    // Deduplica: só o lançamento mais recente de cada compra parcelada
+    const raw = analiseState.lancamentos.filter(l=>l.parcela)
+    const maiorP = {}
+    raw.forEach(l=>{
       const m=l.parcela.match(/(\d+)\s+de\s+(\d+)/i)
       if(!m) return
-      const atual=parseInt(m[1]),totalP=parseInt(m[2])
-      if(totalP-atual>=1) total+=l.valor
+      const atual=parseInt(m[1]),total=parseInt(m[2])
+      const chave=`${(l.desc||'').trim().toLowerCase()}|${l.banco||''}|${total}`
+      if(!maiorP[chave]||atual>maiorP[chave].atual) maiorP[chave]={...l,atual,total}
     })
-    return total
+    return Object.values(maiorP).filter(l=>l.total-l.atual>=1).reduce((s,l)=>s+l.valor,0)
   })()
   return `
   <div class="page-title">Painel geral</div>
@@ -741,23 +743,33 @@ function renderCartao() {
   const cats = doMes.reduce((acc,l)=>{acc[l.categoria]=(acc[l.categoria]||0)+Number(l.valor);return acc},{})
   const catsSorted = Object.entries(cats).sort((a,b)=>b[1]-a[1])
 
-  // Parcelas futuras — guarda lançamentos por mês para detalhamento
-  const parceladas = ls.filter(l=>l.parcela)
-  const hoje = new Date()
-  const futuro = {}     // mes -> total
-  const futuroItens = {} // mes -> [{desc, valor, parcela, banco}]
-  parceladas.forEach(l=>{
+  // Parcelas futuras — deduplica: para cada compra parcelada única,
+  // usa APENAS o lançamento mais recente (maior nº de parcela) de cada banco.
+  // Chave de deduplicação: desc + banco + total_parcelas
+  const parceladasRaw = ls.filter(l=>l.parcela)
+  const maiorParcela = {} // chave -> lançamento com maior parcela atual
+  parceladasRaw.forEach(l=>{
     const m=l.parcela.match(/(\d+)\s+de\s+(\d+)/i)
     if(!m) return
-    const atual=parseInt(m[1]),total=parseInt(m[2]),restantes=total-atual
-    if(restantes<=0) return
+    const atual=parseInt(m[1]),total=parseInt(m[2])
+    const chave=`${(l.desc||'').trim().toLowerCase()}|${l.banco||''}|${total}`
+    if(!maiorParcela[chave] || atual > maiorParcela[chave].atual) {
+      maiorParcela[chave]={...l, atual, total}
+    }
+  })
+  const parceladas = Object.values(maiorParcela)
+  const hoje = new Date()
+  const futuro = {}      // mes -> total
+  const futuroItens = {} // mes -> [{desc, valor, parcela, banco}]
+  parceladas.forEach(l=>{
+    const restantes = l.total - l.atual
+    if(restantes <= 0) return
     for(let i=1;i<=restantes;i++){
       const d=new Date(hoje.getFullYear(),hoje.getMonth()+i,1)
       const mes=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
       futuro[mes]=(futuro[mes]||0)+l.valor
       if(!futuroItens[mes]) futuroItens[mes]=[]
-      const proxParcela=atual+i
-      futuroItens[mes].push({desc:l.desc,valor:l.valor,parcela:`${proxParcela} de ${total}`,banco:l.banco||''})
+      futuroItens[mes].push({desc:l.desc,valor:l.valor,parcela:`${l.atual+i} de ${l.total}`,banco:l.banco||''})
     }
   })
   const mesesFut = Object.entries(futuro).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,6)
