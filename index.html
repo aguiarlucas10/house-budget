@@ -1075,11 +1075,49 @@ function categorizarAuto(desc) {
 
 function parsarCSV(texto, banco) {
   const linhas = texto.trim().split('\n').map(l=>l.replace(/\r/,''))
+  // CSV parser that handles quoted fields (e.g. "title with ""quotes""")
+  function splitCSVLine(line) {
+    const cols = []
+    let cur = '', inQ = false
+    for(let i=0; i<line.length; i++) {
+      const ch = line[i]
+      if(ch==='"') {
+        if(inQ && line[i+1]==='"') { cur+='"'; i++ } // escaped quote
+        else inQ = !inQ
+      } else if(ch===',' && !inQ) {
+        cols.push(cur.trim()); cur=''
+      } else cur += ch
+    }
+    cols.push(cur.trim())
+    return cols
+  }
+
   const parsers = {
-    nubank:      ls => ls.slice(1).filter(l=>l.trim()).map(l=>{const c=l.split(',');return {data:c[0]?.trim(),desc:(c[2]||c[1])?.trim(),valor:Math.abs(parseFloat((c[c.length-1]||'0').replace(/[^0-9.\-]/g,''))||0),banco:'Nubank'}}),
-    xp:          ls => ls.slice(1).filter(l=>l.trim()).map(l=>{const c=l.split(',');return {data:c[0]?.trim(),desc:c[1]?.trim(),valor:Math.abs(parseFloat((c[2]||'0').replace(/[^0-9.\-]/g,''))||0),banco:'XP'}}),
-    c6:          ls => ls.slice(1).filter(l=>l.trim()).map(l=>{const c=l.split(',');return {data:c[0]?.trim(),desc:c[1]?.trim(),valor:Math.abs(parseFloat((c[3]||c[2]||'0').replace(/[^0-9.\-]/g,''))||0),banco:'C6'}}),
-    mercadopago: ls => ls.slice(1).filter(l=>l.trim()).map(l=>{const c=l.split(',');return {data:c[0]?.trim(),desc:(c[2]||c[1])?.trim(),valor:Math.abs(parseFloat((c[c.length-1]||'0').replace(/[^0-9.\-]/g,''))||0),banco:'Mercado Pago'}}),
+    // date,title,amount
+    nubank: ls => ls.slice(1).filter(l=>l.trim()).map(l=>{
+      const c=splitCSVLine(l)
+      const val=parseFloat((c[2]||'0').replace(/[^0-9.\-]/g,''))||0
+      return {data:c[0]?.trim(), desc:c[1]?.trim(), valor:Math.abs(val), banco:'Nubank'}
+    }).filter(r=>r.desc&&r.valor>0),
+    // data,descricao,valor (or similar)
+    xp: ls => ls.slice(1).filter(l=>l.trim()).map(l=>{
+      const c=splitCSVLine(l)
+      const val=parseFloat((c[2]||c[1]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0
+      return {data:c[0]?.trim(), desc:c[1]?.trim(), valor:Math.abs(val), banco:'XP'}
+    }).filter(r=>r.desc&&r.valor>0),
+    // data,descricao,parcela,valor
+    c6: ls => ls.slice(1).filter(l=>l.trim()).map(l=>{
+      const c=splitCSVLine(l)
+      const val=parseFloat((c[3]||c[2]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0
+      return {data:c[0]?.trim(), desc:c[1]?.trim(), valor:Math.abs(val), banco:'C6'}
+    }).filter(r=>r.desc&&r.valor>0),
+    // data,tipo,descricao,valor (varies)
+    mercadopago: ls => ls.slice(1).filter(l=>l.trim()).map(l=>{
+      const c=splitCSVLine(l)
+      const desc=(c[2]||c[1]||'').trim()
+      const val=parseFloat((c[c.length-1]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0
+      return {data:c[0]?.trim(), desc, valor:Math.abs(val), banco:'Mercado Pago'}
+    }).filter(r=>r.desc&&r.valor>0),
   }
   const rows = (parsers[banco]||parsers.nubank)(linhas)
   return rows.filter(r=>r.desc&&r.valor>0).map(r=>({...r,categoria:categorizarAuto(r.desc)}))
@@ -1135,7 +1173,7 @@ function renderAnalise() {
   <div class="page-title">Análise de cartões</div>
   <div class="page-sub">Importe extratos CSV · categorize · compare meses</div>
   <div class="card">
-    <div class="section-title">Importar extrato (CSV)</div>
+    <div class="section-title">Importar extrato</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <div class="field-row" style="margin:0;flex:1;min-width:140px">
         <label>Banco</label>
@@ -1148,11 +1186,24 @@ function renderAnalise() {
         </select>
       </div>
       <div style="flex:2;min-width:200px">
-        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Arquivo CSV (múltiplos permitidos)</label>
-        <input type="file" id="csv-input" accept=".csv" multiple style="font-size:13px;color:var(--text2);width:100%" onchange="importarCSV(this.files)"/>
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Arquivo CSV ou PDF (múltiplos permitidos)</label>
+        <input type="file" id="csv-input" accept=".csv,.pdf" multiple style="font-size:13px;color:var(--text2);width:100%" onchange="importarArquivos(this.files)"/>
       </div>
     </div>
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">Como exportar: Nubank → Perfil → Meus dados · XP → Cartão → Fatura → Exportar · C6 → Cartão → Exportar fatura · Mercado Pago → Atividades → Exportar</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px">
+      <div style="background:var(--surface2);border-radius:var(--r);padding:8px 12px">
+        <div style="font-weight:500;margin-bottom:4px;color:var(--text)">CSV</div>
+        <div style="color:var(--text3)">Nubank → Perfil → Meus dados</div>
+        <div style="color:var(--text3)">XP → Cartão → Fatura → Exportar</div>
+        <div style="color:var(--text3)">C6 → Cartão → Exportar fatura</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:var(--r);padding:8px 12px">
+        <div style="font-weight:500;margin-bottom:4px;color:var(--text)">PDF</div>
+        <div style="color:var(--text3)">Mercado Pago → Atividades → PDF</div>
+        <div style="color:var(--text3)">Nubank → Fatura → Baixar PDF</div>
+        <div style="color:var(--text3)">Qualquer extrato em PDF com texto</div>
+      </div>
+    </div>
     <div id="import-status"></div>
   </div>
   <div id="analise-corpo">
@@ -1318,6 +1369,153 @@ function renderChartCat(dados) {
   analiseState.chartCat = new Chart(el,{type:'doughnut',data:{labels:dados.map(d=>d.cat),datasets:[{data:dados.map(d=>d.total),backgroundColor:cores,borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: R$ ${Math.round(ctx.raw).toLocaleString('pt-BR')}`}}}}})
 }
 
+
+// ─── PDF PARSING ──────────────────────────────────────────────────────────────
+async function extrairTextoPDF(file) {
+  if(typeof pdfjsLib==='undefined') { toast('PDF.js ainda carregando, tente novamente.',false); return '' }
+  const buffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({data: buffer}).promise
+  let textoTotal = ''
+  for(let i=1; i<=pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    // Sort items by Y position (top to bottom) then X (left to right)
+    const items = content.items.sort((a,b) => {
+      const dy = Math.round(b.transform[5]) - Math.round(a.transform[5])
+      return dy !== 0 ? dy : a.transform[4] - b.transform[4]
+    })
+    // Group items into lines by Y coordinate
+    let currentY = null, currentLine = []
+    for(const item of items) {
+      const y = Math.round(item.transform[5])
+      if(currentY === null) currentY = y
+      if(Math.abs(y - currentY) > 3) {
+        textoTotal += currentLine.join(' ') + '
+'
+        currentLine = []
+        currentY = y
+      }
+      currentLine.push(item.str.trim())
+    }
+    if(currentLine.length) textoTotal += currentLine.join(' ') + '
+'
+  }
+  return textoTotal
+}
+
+function parsarPDF(texto, banco) {
+  const linhas = texto.split('
+').map(l=>l.trim()).filter(l=>l.length>2)
+  const lancamentos = []
+
+  if(banco==='mercadopago') {
+    // Mercado Pago PDF: linhas com padrão "DD/MM/YYYY descrição R$ valor"
+    // ou "descrição ... valor" com data em linha anterior
+    const reData = /(\d{2}\/\d{2}\/\d{4})/
+    const reValor = /R\$\s*([\d.,]+)/
+    const reValorNeg = /-\s*R\$\s*([\d.,]+)/
+
+    for(let i=0; i<linhas.length; i++) {
+      const linha = linhas[i]
+      const temData = reData.exec(linha)
+      if(!temData) continue
+
+      const data = temData[1].split('/').reverse().join('-')
+      // Look for value on same line or next line
+      const textoCompleto = linha + ' ' + (linhas[i+1]||'')
+      const valorMatch = reValorNeg.exec(textoCompleto) || reValor.exec(textoCompleto)
+      if(!valorMatch) continue
+
+      const valor = parseFloat(valorMatch[1].replace('.','').replace(',','.'))
+      if(!valor || valor <= 0) continue
+
+      // Description: everything between date and value
+      let desc = linha.replace(reData,'').replace(reValor,'').replace(reValorNeg,'').replace(/R\$/g,'').trim()
+      if(desc.length < 2 && linhas[i-1]) desc = linhas[i-1].substring(0,60)
+      if(desc.length < 2) continue
+
+      lancamentos.push({
+        data,
+        desc: desc.substring(0,80),
+        valor,
+        categoria: categorizarAuto(desc),
+        banco: 'Mercado Pago'
+      })
+    }
+    return lancamentos
+  }
+
+  // Parser genérico para outros PDFs
+  // Detecta linhas com data + texto + valor monetário
+  const reGenerico = /(\d{2}\/\d{2}\/\d{2,4})\s+(.+?)\s+([\d]{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*$/
+  const reGenerico2 = /(\d{2}\/\d{2}\/\d{2,4})\s+(.{5,60}?)\s+R\$\s*([\d.,]+)/
+
+  for(const linha of linhas) {
+    const m = reGenerico.exec(linha) || reGenerico2.exec(linha)
+    if(!m) continue
+    const partes = m[1].split('/')
+    const data = partes.length===3
+      ? (partes[2].length===2 ? `20${partes[2]}-${partes[1]}-${partes[0]}` : `${partes[2]}-${partes[1]}-${partes[0]}`)
+      : m[1]
+    const desc = m[2].trim()
+    const valor = parseFloat(m[3].replace(/\./g,'').replace(',','.'))
+    if(!desc || !valor || valor<=0) continue
+    lancamentos.push({data, desc: desc.substring(0,80), valor, categoria: categorizarAuto(desc), banco: banco==='auto'?'PDF':banco})
+  }
+  return lancamentos
+}
+
+// ─── IMPORTAÇÃO UNIFICADA (CSV + PDF) ────────────────────────────────────────
+window.importarArquivos = async (files) => {
+  const st = document.getElementById('import-status')
+  if(st) st.innerHTML='<div class="alert a-info" style="margin-top:8px">Processando arquivos...</div>'
+
+  let novosTotal=0, dupTotal=0, erros=[]
+
+  for(const file of files) {
+    try {
+      const isPDF = file.name.toLowerCase().endsWith('.pdf') || file.type==='application/pdf'
+      const bancoCfg = document.getElementById('banco-sel').value
+
+      let novos = []
+      if(isPDF) {
+        const texto = await extrairTextoPDF(file)
+        if(!texto) { erros.push(file.name+': não foi possível extrair texto'); continue }
+        const banco = bancoCfg==='auto' ? detectarBanco(texto, file.name) : bancoCfg
+        novos = parsarPDF(texto, banco)
+        if(novos.length===0) erros.push(file.name+': nenhum lançamento encontrado no PDF. Verifique se o PDF tem texto selecionável (não é imagem).')
+      } else {
+        const texto = await file.text()
+        const banco = bancoCfg==='auto' ? detectarBanco(texto, file.name) : bancoCfg
+        novos = parsarCSV(texto, banco)
+      }
+
+      for(const novo of novos) {
+        const jaTem = analiseState.lancamentos.some(ex =>
+          mesLabel(ex.data)===mesLabel(novo.data) &&
+          Math.abs(Number(ex.valor)-Number(novo.valor))<0.01 &&
+          similaridade(ex.desc,novo.desc)>0.85
+        )
+        if(!jaTem) { analiseState.lancamentos.push(novo); novosTotal++ }
+        else dupTotal++
+      }
+    } catch(e) {
+      erros.push(file.name+': '+e.message)
+    }
+  }
+
+  analiseState.filtroMes='todos'; analiseState.filtroBanco='todos'; analiseState.filtroCat='todas'
+
+  let statusMsg = novosTotal>0
+    ? `<div class="alert a-ok" style="margin-top:8px">${novosTotal} lançamentos importados.${dupTotal>0?' '+dupTotal+' duplicatas ignoradas.':''}</div>`
+    : '<div class="alert a-warn" style="margin-top:8px">Nenhum lançamento novo encontrado.</div>'
+  if(erros.length>0)
+    statusMsg += `<div class="alert a-danger" style="margin-top:6px">${erros.join('<br>')}</div>`
+  if(st) st.innerHTML=statusMsg
+
+  if(novosTotal>0) document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()
+}
+
 window.importarCSV = async (files) => {
   let novosTotal=0, dupTotal=0
   for(const file of files) {
@@ -1382,5 +1580,9 @@ window.salvarNoFirebase = async () => {
 </script>
 <!-- CHART.JS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+if(typeof pdfjsLib!=='undefined') pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'
+</script>
 </body>
 </html>
