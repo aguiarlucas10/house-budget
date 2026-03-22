@@ -170,7 +170,7 @@ tr:hover td{background:var(--surface2)}
     <div id="modal-body"></div>
     <div class="modal-footer">
       <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary btn-sm" onclick="saveModal()">Salvar</button>
+      <button class="btn btn-primary btn-sm" id="modal-save" onclick="saveModal()">Salvar</button>
     </div>
   </div>
 </div>
@@ -306,16 +306,19 @@ async function seedDados() {
     {desc:'Outros',valor:300,owner:'Outros',mes},
   ]
   const contas = [
-    {nome:'Condomínio',cat:'casa',valor:480,dia:28,status:'pendente',mes},
-    {nome:'Energia (CELESC)',cat:'casa',valor:180,dia:10,status:'pago',mes},
-    {nome:'Água (CASAN)',cat:'casa',valor:90,dia:15,status:'pago',mes},
-    {nome:'Internet (Vivo)',cat:'casa',valor:120,dia:5,status:'pago',mes},
-    {nome:'IPTU (parcela)',cat:'casa',valor:65,dia:10,status:'pendente',mes},
-    {nome:'Seguro residencial',cat:'casa',valor:45,dia:1,status:'pago',mes},
-    {nome:'Fatura cartão XP',cat:'cartao',valor:2100,dia:27,status:'pendente',mes},
-    {nome:'Consórcio Porto Seguro',cat:'consorcio',valor:1100,dia:20,status:'pago',mes},
-    {nome:'Fundo de reserva',cat:'reserva',valor:860,dia:5,status:'pago',mes},
-    {nome:'Fundo de viagens',cat:'viagem',valor:500,dia:5,status:'pago',mes},
+    {nome:'Algar Internet',       cat:'casa',     valor:0, dia:9,  status:'pendente',mes},
+    {nome:'Celesc (energia 1)',   cat:'casa',     valor:0, dia:9,  status:'pendente',mes},
+    {nome:'Condomínio BB',        cat:'casa',     valor:0, dia:10, status:'pendente',mes},
+    {nome:'Studio Dois',          cat:'casa',     valor:0, dia:10, status:'pendente',mes},
+    {nome:'Fatura Nubank',        cat:'cartao',   valor:0, dia:13, status:'pendente',mes},
+    {nome:'Fatura XP',            cat:'cartao',   valor:0, dia:15, status:'pendente',mes},
+    {nome:'Fatura C6',            cat:'cartao',   valor:0, dia:16, status:'pendente',mes},
+    {nome:'Celesc (energia 2)',   cat:'casa',     valor:0, dia:16, status:'pendente',mes},
+    {nome:'Fatura Mercado Pago',  cat:'cartao',   valor:0, dia:19, status:'pendente',mes},
+    {nome:'Boleto CN',            cat:'casa',     valor:0, dia:25, status:'pendente',mes},
+    {nome:'Consórcio',            cat:'consorcio',valor:0, dia:20, status:'pendente',mes},
+    {nome:'Fundo de reserva',     cat:'reserva',  valor:0, dia:5,  status:'pendente',mes},
+    {nome:'Fundo de viagens',     cat:'viagem',   valor:0, dia:5,  status:'pendente',mes},
   ]
   const cartao = [
     {descricao:'Supermercado',cat:'Alimentação',valor:480,data:'2026-03-05'},
@@ -398,7 +401,16 @@ window.goPage = async (id) => {
 function renderDashboard() {
   const totalRenda  = state.renda.reduce((s,r)=>s+Number(r.valor),0)
   const fin         = Number(state.financiamento?.parcela||0)
-  const totalContas = state.contas.reduce((s,c)=>s+Number(c.valor),0) + fin
+  // Usa total de cartões da análise se disponível, senão usa contas cadastradas
+  const totalCartaoAnalise = (()=>{
+    const ls = analiseState.lancamentos
+    if(!ls.length) return 0
+    const meses = [...new Set(ls.map(l=>l.data?l.data.slice(0,7):''))].filter(Boolean).sort()
+    const mesRecente = meses[meses.length-1]
+    return ls.filter(l=>l.data&&l.data.slice(0,7)===mesRecente).reduce((s,l)=>s+Number(l.valor),0)
+  })()
+  const totalContas = state.contas.filter(c=>c.cat!=='cartao').reduce((s,c)=>s+Number(c.valor),0) + fin +
+    (totalCartaoAnalise > 0 ? totalCartaoAnalise : state.contas.filter(c=>c.cat==='cartao').reduce((s,c)=>s+Number(c.valor),0))
   const livre = totalRenda - totalContas
   const pct   = totalRenda>0 ? totalContas/totalRenda*100 : 0
   const cats  = [
@@ -410,6 +422,21 @@ function renderDashboard() {
     {l:'Viagens',v:bycat('viagem'),c:'p-blue'},
   ].filter(d=>d.v>0)
   const alertas = state.contas.filter(c=>c.status==='pendente'||c.status==='atrasado')
+  // Previsão parcelas próximo mês
+  const hoje = new Date()
+  const proxMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 1)
+  const proxMesStr = proxMes.getFullYear()+'-'+String(proxMes.getMonth()+1).padStart(2,'0')
+  const parcelasFuturas = (()=>{
+    const parceladas = analiseState.lancamentos.filter(l=>l.parcela)
+    let total = 0
+    parceladas.forEach(l=>{
+      const m=l.parcela.match(/(\d+)\s+de\s+(\d+)/i)
+      if(!m) return
+      const atual=parseInt(m[1]),totalP=parseInt(m[2])
+      if(totalP-atual>=1) total+=l.valor
+    })
+    return total
+  })()
   return `
   <div class="page-title">Painel geral</div>
   <div class="page-sub">${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}</div>
@@ -434,8 +461,10 @@ function renderDashboard() {
       <div class="section-title">Contas pendentes</div>
       ${alertas.length===0
         ? '<div class="alert a-ok">Todas as contas em dia!</div>'
-        : alertas.map(c=>`<div class="alert ${c.status==='atrasado'?'a-danger':'a-warn'}" style="margin-bottom:8px">${c.nome} — ${fmt(c.valor)} · dia ${c.dia}</div>`).join('')}
+        : alertas.map(c=>`<div class="alert ${c.status==='atrasado'?'a-danger':'a-warn'}" style="margin-bottom:8px">${c.nome}${c.valor>0?' — '+fmt(c.valor):''} · dia ${c.dia}</div>`).join('')}
       <div class="alert a-ok" style="margin-top:8px">Reserva: ${fmtPct((state.reserva?.saldo||0)/(state.reserva?.meta||1)*100)} da meta</div>
+      ${parcelasFuturas>0?`<div class="alert a-info" style="margin-top:8px">Parcelas futuras já comprometidas (próx. mês): <strong>${fmt(parcelasFuturas)}</strong></div>`:''}
+      ${totalCartaoAnalise>0?`<div class="alert a-warn" style="margin-top:8px">Total cartões (fatura mais recente): <strong>${fmt(totalCartaoAnalise)}</strong></div>`:''}
     </div>
   </div>
   <div class="card">
@@ -583,7 +612,7 @@ function renderOrcamento() {
       <div class="section-title">Metas por categoria</div>
       ${[
         {l:'Financiamento',v:Number(state.financiamento?.parcela||0),lim:total*.30},
-        {l:'Cartão',v:bycat('cartao'),lim:total*.18},
+        {l:'Cartão',v:totalCartaoOrc,lim:total*.18},
         {l:'Casa',v:bycat('casa'),lim:total*.12},
         {l:'Consórcio',v:bycat('consorcio'),lim:total*.10},
         {l:'Viagens',v:bycat('viagem'),lim:total*.05},
@@ -667,46 +696,107 @@ window.saveFinanciamento = async () => {
 
 // ─── CARTÃO ───────────────────────────────────────────────────────────────────
 function renderCartao() {
-  const total = state.cartao.reduce((s,c)=>s+Number(c.valor),0)
-  const cats  = state.cartao.reduce((acc,c)=>{acc[c.cat]=(acc[c.cat]||0)+Number(c.valor);return acc},{})
+  // Usa dados da análise de cartões se disponível
+  const ls = analiseState.lancamentos
+  const temAnalise = ls.length > 0
+
+  if(!temAnalise) {
+    return `
+    <div class="page-title">Cartão de crédito</div>
+    <div class="page-sub">Visão consolidada dos cartões</div>
+    <div class="alert a-info" style="margin-top:8px">
+      Nenhum extrato importado ainda. Vá para <strong>Análise de cartões</strong>, importe os CSVs/PDFs dos seus cartões e volte aqui para ver o resumo completo.
+    </div>
+    <button class="btn btn-primary" onclick="goPage('analise')" style="margin-top:12px">→ Ir para Análise de cartões</button>`
+  }
+
+  // Mês mais recente dos dados
+  const meses = [...new Set(ls.map(l=>l.data?l.data.slice(0,7):''))].filter(Boolean).sort()
+  const mesAtual = meses[meses.length-1]
+  const mesAtualLabel = mesAtual ? mesAtual.slice(5,7)+'/'+mesAtual.slice(0,4) : '—'
+
+  // Lançamentos do mês mais recente
+  const doMes = ls.filter(l=>l.data&&l.data.slice(0,7)===mesAtual)
+  const totalMes = doMes.reduce((s,l)=>s+Number(l.valor),0)
+
+  // Categorias do mês
+  const cats = doMes.reduce((acc,l)=>{acc[l.categoria]=(acc[l.categoria]||0)+Number(l.valor);return acc},{})
+  const catsSorted = Object.entries(cats).sort((a,b)=>b[1]-a[1])
+
+  // Parcelas futuras
+  const parceladas = ls.filter(l=>l.parcela)
+  const hoje = new Date()
+  const futuro = {}
+  parceladas.forEach(l=>{
+    const m=l.parcela.match(/(\d+)\s+de\s+(\d+)/i)
+    if(!m) return
+    const atual=parseInt(m[1]),total=parseInt(m[2]),restantes=total-atual
+    if(restantes<=0) return
+    for(let i=1;i<=restantes;i++){
+      const d=new Date(hoje.getFullYear(),hoje.getMonth()+i,1)
+      const mes=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
+      futuro[mes]=(futuro[mes]||0)+l.valor
+    }
+  })
+  const mesesFut = Object.entries(futuro).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,4)
+
+  // Por banco
+  const bancos = [...new Set(ls.map(l=>l.banco))]
+  const porBanco = bancos.map(b=>({
+    banco:b,
+    mes: doMes.filter(l=>l.banco===b).reduce((s,l)=>s+Number(l.valor),0),
+    total: ls.filter(l=>l.banco===b).reduce((s,l)=>s+Number(l.valor),0),
+  })).filter(b=>b.total>0)
+
   return `
   <div class="page-title">Cartão de crédito</div>
-  <div class="page-sub">Lançamentos e categorias</div>
+  <div class="page-sub">Baseado nos extratos importados · mês mais recente: ${mesAtualLabel}</div>
   <div class="metrics-grid">
-    <div class="metric-card"><div class="metric-label">Total da fatura</div><div class="metric-value" style="color:var(--warn)">${fmt(total)}</div></div>
-    <div class="metric-card"><div class="metric-label">Lançamentos</div><div class="metric-value">${state.cartao.length}</div></div>
+    <div class="metric-card"><div class="metric-label">Fatura ${mesAtualLabel}</div><div class="metric-value" style="color:var(--warn)">${fmt(totalMes)}</div><div class="metric-sub">${doMes.length} lançamentos</div></div>
+    <div class="metric-card"><div class="metric-label">Maior categoria</div><div class="metric-value" style="font-size:15px">${catsSorted[0]?.[0]||'—'}</div><div class="metric-sub">${fmt(catsSorted[0]?.[1]||0)}</div></div>
+    <div class="metric-card"><div class="metric-label">Parcelas ativas</div><div class="metric-value" style="color:var(--info)">${parceladas.length}</div><div class="metric-sub">compras parceladas</div></div>
+    <div class="metric-card"><div class="metric-label">Próximo mês</div><div class="metric-value" style="color:var(--warn)">${mesesFut[0]?fmt(mesesFut[0][1]):'—'}</div><div class="metric-sub">já comprometido</div></div>
   </div>
+
+  ${mesesFut.length>0?`<div class="card" style="border-color:var(--info)">
+    <div class="section-title" style="color:var(--info)">Parcelas futuras já comprometidas</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      ${mesesFut.map(([mes,val])=>`
+        <div style="background:var(--surface2);border-radius:var(--r);padding:10px;text-align:center">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${mes.slice(5,7)}/${mes.slice(0,4)}</div>
+          <div style="font-size:15px;font-weight:600;color:var(--info)">${fmt(val)}</div>
+        </div>`).join('')}
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:8px">Estimativa das parcelas restantes · não inclui novas compras</div>
+  </div>`:''}
+
   <div class="two-col">
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div class="section-title" style="margin:0">Lançamentos</div>
-        <button class="btn btn-primary btn-sm" onclick="openModal('cartao')">+ Adicionar</button>
+        <div class="section-title" style="margin:0">Fatura ${mesAtualLabel} por categoria</div>
+        <button class="btn btn-sm" onclick="goPage('analise')">Ver análise completa →</button>
       </div>
-      <div class="tbl-wrap"><table>
-        <tr><th>Descrição</th><th>Categoria</th><th>Valor</th><th></th></tr>
-        ${state.cartao.map(c=>`<tr>
-          <td>${c.descricao}</td>
-          <td>
-            <select class="input" style="padding:2px 6px;font-size:11px;width:auto"
-              onchange="atualizarCatCartao('${c.id}',this.value)">
-              ${['Alimentação','Casa','Saúde','Transporte','Lazer','Pessoal','Variado','Outros'].map(cat=>
-                `<option ${c.cat===cat?'selected':''}>${cat}</option>`).join('')}
-            </select>
-          </td>
-          <td>${fmt(c.valor)}</td>
-          <td><button class="btn btn-sm btn-danger" onclick="deleteItem('cartao','${c.id}','cartao')">×</button></td>
-        </tr>`).join('')}
-        <tr><td colspan="2"><strong>Total</strong></td><td><strong>${fmt(total)}</strong></td><td></td></tr>
-      </table></div>
-    </div>
-    <div class="card">
-      <div class="section-title">Por categoria</div>
-      ${Object.entries(cats).map(([cat,val])=>`<div style="margin-bottom:10px">
+      ${catsSorted.map(([cat,val])=>`<div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;margin-bottom:3px">
           <span style="font-size:13px">${cat}</span><span style="font-size:12px;font-weight:500">${fmt(val)}</span>
         </div>
-        <div class="pbar" style="height:5px"><div class="pfill p-blue" style="width:${(val/total*100).toFixed(0)}%"></div></div>
+        <div class="pbar" style="height:5px"><div class="pfill p-blue" style="width:${totalMes>0?(val/totalMes*100).toFixed(0):0}%"></div></div>
       </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="section-title">Por banco (${mesAtualLabel})</div>
+      ${porBanco.map(b=>`<div class="row-item">
+        <span class="row-label"><span class="badge b-info">${b.banco}</span></span>
+        <span class="row-value">${fmt(b.mes)}</span>
+      </div>`).join('')}
+      <div style="margin-top:16px">
+        <div class="section-title">Lançamentos recentes</div>
+        ${doMes.slice(0,8).map(l=>`<div class="row-item" style="font-size:12px">
+          <span style="color:var(--text2)">${l.desc.substring(0,30)}${l.parcela?` <span style="font-size:10px;background:var(--accent-light);color:var(--accent-dark);border-radius:3px;padding:1px 4px">${l.parcela}</span>`:''}</span>
+          <span style="font-weight:500">${fmt(l.valor)}</span>
+        </div>`).join('')}
+        ${doMes.length>8?`<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px">+${doMes.length-8} mais · <a href="#" onclick="goPage('analise');return false" style="color:var(--accent)">ver todos</a></div>`:''}
+      </div>
     </div>
   </div>`
 }
@@ -737,7 +827,7 @@ function renderCasa() {
     <div class="tbl-wrap"><table>
       <tr><th>Conta</th><th>Valor</th><th>Dia</th><th>Status</th><th></th></tr>
       ${contas.map(c=>`<tr>
-        <td>${c.nome}</td><td>${fmt(c.valor)}</td><td>${c.dia}</td>
+        <td>${c.nome}</td><td>${c.valor>0?fmt(c.valor):'<span style="color:var(--text3);font-size:11px">— editar</span>'}</td><td>${c.dia}</td>
         <td><select class="input" style="padding:3px 6px;font-size:12px;width:auto" onchange="updateStatus('${c.id}',this.value)">
           <option ${c.status==='pago'?'selected':''}>pago</option>
           <option ${c.status==='pendente'?'selected':''}>pendente</option>
@@ -978,6 +1068,14 @@ window.openModal = (type) => {
       <div class="field-row"><label>Valor (R$)</label><input class="input" type="number" id="m-valor"/></div>`,
     'conta-casa':`
       <div class="field-row"><label>Nome da conta</label><input class="input" id="m-nome"/></div>
+      <div class="field-row"><label>Categoria</label>
+        <select class="input" id="m-cat">
+          <option value="casa">Casa</option>
+          <option value="cartao">Cartão</option>
+          <option value="consorcio">Consórcio</option>
+          <option value="reserva">Reserva</option>
+          <option value="viagem">Viagem</option>
+        </select></div>
       <div class="field-row"><label>Valor (R$)</label><input class="input" type="number" id="m-valor"/></div>
       <div class="field-row"><label>Dia de vencimento</label><input class="input" type="number" id="m-dia" min="1" max="31"/></div>`,
     mobilia:`
@@ -1017,7 +1115,7 @@ window.saveModal = async () => {
       await addDoc(col('cartao'), {descricao:s('m-desc'),cat:s('m-cat'),valor:n('m-valor'),data:new Date().toISOString().slice(0,10)})
       closeModal(); toast('Lançamento adicionado!'); goPage('cartao')
     } else if(currentModal==='conta-casa') {
-      await addDoc(col('contas'), {nome:s('m-nome'),cat:'casa',valor:n('m-valor'),dia:n('m-dia'),status:'pendente',mes})
+      await addDoc(col('contas'), {nome:s('m-nome'),cat:s('m-cat')||'casa',valor:n('m-valor'),dia:n('m-dia'),status:'pendente',mes})
       closeModal(); toast('Conta adicionada!'); goPage('casa')
     } else if(currentModal==='mobilia') {
       await addDoc(col('mobilia'), {item:s('m-item'),valor:n('m-valor'),prioridade:s('m-prior'),status:'aguardando'})
