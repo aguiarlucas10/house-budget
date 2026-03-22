@@ -363,6 +363,7 @@ const navPages = [
   {id:'viagens',icon:'◁',label:'Viagens'},
   {id:'reserva',icon:'◆',label:'Fundo de reserva'},
   {id:'analise',icon:'◑',label:'Análise de cartões'},
+  {id:'tutorial',icon:'?',label:'Tutorial'},
 ]
 
 function buildNav() {
@@ -385,6 +386,7 @@ window.goPage = async (id) => {
     casa:renderCasa, consorcio:renderConsorcio,
     viagens:renderViagens, reserva:renderReserva,
     analise:renderAnalise,
+    tutorial:renderTutorial,
   }
   document.getElementById('main').innerHTML = renders[id]?.() || ''
   window.scrollTo(0,0)
@@ -1037,16 +1039,17 @@ window.deleteItem = async (colName, id, page) => {
 
 // ─── ANÁLISE DE CARTÕES ───────────────────────────────────────────────────────
 const CATEGORIAS = {
-  'Alimentação':  ['ifood','rappi','supermercado','mercado','padaria','restaurante','lanchonete','burger','mcdonald','subway','pizza','sushi','hortifruti','pao de acucar','extra','carrefour','atacadao','assai'],
-  'Transporte':   ['uber','99 ','taxi','combustivel','posto','shell','ipiranga','estacionamento','pedagio','metro','onibus','passagem','latam','gol','azul'],
-  'Saúde':        ['farmacia','drogaria','droga','ultrafarma','panvel','clinica','medico','laboratorio','hospital','odonto','academia','smartfit','bluefit'],
-  'Casa':         ['shopee','amazon','magazine','magalu','americanas','casas bahia','leroy','tok stok','reforma','condominio','energia','internet','vivo','claro','tim '],
-  'Lazer':        ['netflix','spotify','amazon prime','disney','hbo','youtube','steam','playstation','xbox','cinema','teatro','ingresso'],
-  'Vestuário':    ['renner','riachuelo','c&a','zara','h&m','shein','adidas','nike','centauro','decathlon','arezzo'],
-  'Educação':     ['alura','udemy','coursera','escola','faculdade','curso','livro','livraria'],
-  'Pessoal':      ['salao','barbearia','manicure','spa','perfume','sephora','boticario','natura'],
-  'Viagem':       ['hotel','pousada','airbnb','booking','decolar','trivago','expedia'],
-  'Investimento': ['xp investimentos','rico','nuinvest','tesouro','cdb','lci','lca'],
+  'Alimentação':  ['ifood','rappi','supermercado','padaria','restaurante','lanchonete','burger','mcdonald','subway','pizza','sushi','hortifruti','pao de acucar','extra','carrefour','atacadao','assai','acougue','delivery'],
+  'Transporte':   ['uber','99*','99 ','taxi','combustivel','posto','shell','ipiranga','estacionamento','pedagio','metro','onibus','passagem','latam','gol','azul','99app'],
+  'Saúde':        ['farmacia','drogaria','droga','ultrafarma','panvel','clinica','medico','laboratorio','hospital','odonto','academia','smartfit','bluefit','drogasil','pacheco'],
+  'Compras':      ['mercadolivre','mercado livre','shopee','amazon','magazine','magalu','americanas','casas bahia','aliexpress','shein','submarino'],
+  'Casa':         ['leroy','tok stok','telhanorte','reform','condominio','energia','internet','vivo','claro','tim ','oi ','instalacao','manutencao'],
+  'Lazer':        ['netflix','spotify','amazon prime','disney','hbo','max ','youtube','steam','playstation','xbox','cinema','teatro','ingresso','mp*melimais','melimais'],
+  'Vestuário':    ['renner','riachuelo','c&a','zara','h&m','adidas','nike','centauro','decathlon','arezzo','vivara','hering','gap '],
+  'Educação':     ['alura','udemy','coursera','escola','faculdade','curso','livro','livraria','anthropic','chatgpt','openai'],
+  'Pessoal':      ['salao','barbearia','manicure','spa','perfume','sephora','boticario','natura','avon','oticien'],
+  'Viagem':       ['hotel','pousada','airbnb','booking','decolar','trivago','expedia','aeroporto','passag'],
+  'Investimento': ['xp investimentos','rico','nuinvest','tesouro','cdb','lci','lca','fundo','corretora'],
 }
 
 function categorizarAuto(desc) {
@@ -1294,19 +1297,89 @@ async function extrairTextoPDF(file){
 }
 
 function parsarPDF(texto,banco){
-  const ls=texto.split('\n').map(l=>l.trim()).filter(l=>l.length>2)
-  const lncs=[]
-  const reD=/(\d{2}\/\d{2}\/\d{4})/,reV=/R\$\s*([\d.,]+)/,reVN=/-\s*R\$\s*([\d.,]+)/
-  for(let i=0;i<ls.length;i++){
-    const l=ls[i],m=reD.exec(l);if(!m)continue
-    const data=m[1].split('/').reverse().join('-')
-    const tc=l+' '+(ls[i+1]||'')
-    const vm=reVN.exec(tc)||reV.exec(tc);if(!vm)continue
-    const valor=parseFloat(vm[1].replace('.','').replace(',','.'));if(!valor||valor<=0)continue
-    let desc=l.replace(reD,'').replace(reVN,'').replace(reV,'').replace(/R\$/g,'').trim()
-    if(desc.length<2&&ls[i-1])desc=ls[i-1].substring(0,60)
-    if(desc.length<2)continue
-    lncs.push({data,desc:desc.substring(0,80),valor,categoria:categorizarAuto(desc),banco:banco==='mercadopago'?'Mercado Pago':'PDF'})
+  const linhas = texto.split('\n').map(l=>l.trim()).filter(l=>l.length>0)
+  const lncs = []
+
+  // ── Mercado Pago parser ──────────────────────────────────────────────────
+  // Formato real da fatura MP:
+  // "DD/MM DESCRIÇÃO [Parcela X de Y] R$ VALOR,XX"
+  // Cada página repete "Total R$ X.XXX,XX" no final — ignorar
+  // "Pagamento da fatura" deve ser ignorado (crédito, não gasto)
+  // Datas são DD/MM sem ano — inferir pelo contexto da fatura
+
+  if(banco==='mercadopago') {
+    // Regex: linha começa com DD/MM, tem descrição, termina com R$ VALOR
+    const reLinha = /^(\d{2}\/\d{2})\s+(.+?)\s+R\$\s*([\d.,]+)\s*$/
+    // Palavras-chave para ignorar (pagamentos, totais, cabeçalhos)
+    const ignorar = [
+      'pagamento da fatura', 'total', 'data movimentações',
+      'detalhes de consumo', 'cartão visa', 'movimentações na fatura',
+      'vencimento', 'emitido em'
+    ]
+
+    for(const linha of linhas) {
+      const m = reLinha.exec(linha)
+      if(!m) continue
+
+      const [, dmData, desc, valorStr] = m
+      const descLower = desc.toLowerCase()
+
+      // Ignorar pagamentos e linhas de cabeçalho
+      if(ignorar.some(ig => descLower.includes(ig))) continue
+
+      // Ignorar linhas que são só o total repetido (valor muito alto)
+      const valor = parseFloat(valorStr.replace(/\./g,'').replace(',','.'))
+      if(!valor || valor <= 0) continue
+
+      // Inferir ano: se mês > mês atual, provavelmente ano anterior
+      const partesDM = dmData.split('/')
+      const dia = partesDM[0], mes = partesDM[1]
+      const agora = new Date()
+      const mesAtual = agora.getMonth() + 1
+      const anoAtual = agora.getFullYear()
+      const mesNum = parseInt(mes)
+      const ano = mesNum > mesAtual + 1 ? anoAtual - 1 : anoAtual
+      const data = `${ano}-${mes}-${dia}`
+
+      // Limpar descrição: remover "Parcela X de Y" para categorização
+      const descLimpa = desc.replace(/Parcela\s+\d+\s+de\s+\d+/gi,'').replace(/\s+/g,' ').trim()
+
+      lncs.push({
+        data,
+        desc: desc.substring(0,80),
+        valor,
+        categoria: categorizarAuto(descLimpa),
+        banco: 'Mercado Pago'
+      })
+    }
+    return lncs
+  }
+
+  // ── Parser genérico para outros PDFs ────────────────────────────────────
+  // Tenta detectar linhas com DD/MM[/AAAA] + descrição + valor
+  const reGen1 = /^(\d{2}\/\d{2}\/\d{2,4})\s+(.+?)\s+R\$\s*([\d.,]+)\s*$/
+  const reGen2 = /^(\d{2}\/\d{2})\s+(.+?)\s+R\$\s*([\d.,]+)\s*$/
+  const ignorarGen = ['total','data movimentações','detalhes de consumo']
+
+  for(const linha of linhas) {
+    const m = reGen1.exec(linha) || reGen2.exec(linha)
+    if(!m) continue
+    const descLower = (m[2]||'').toLowerCase()
+    if(ignorarGen.some(ig=>descLower.includes(ig))) continue
+    const valor = parseFloat((m[3]||'0').replace(/\./g,'').replace(',','.'))
+    if(!valor||valor<=0) continue
+
+    let data = m[1]
+    if(data.includes('/') && data.split('/').length===2){
+      const p=data.split('/'),mes=parseInt(p[1]),agora=new Date()
+      const ano=mes>agora.getMonth()+2?agora.getFullYear()-1:agora.getFullYear()
+      data=`${ano}-${p[1]}-${p[0]}`
+    } else if(data.includes('/')) {
+      const p=data.split('/')
+      data=p.length===3?(p[2].length===2?`20${p[2]}-${p[1]}-${p[0]}`:`${p[2]}-${p[1]}-${p[0]}`):data
+    }
+
+    lncs.push({data, desc:m[2].trim().substring(0,80), valor, categoria:categorizarAuto(m[2]), banco:'PDF'})
   }
   return lncs
 }
@@ -1357,6 +1430,297 @@ window.salvarNoFirebase=async()=>{
   if(!analiseState.lancamentos.length){toast('Nenhum lançamento.',false);return}
   try{await Promise.all(analiseState.lancamentos.map(l=>addDoc(col('extrato'),l)));toast(analiseState.lancamentos.length+' lançamentos salvos!')}
   catch(e){toast('Erro ao salvar.',false)}
+}
+
+
+// ─── TUTORIAL ─────────────────────────────────────────────────────────────────
+function renderTutorial() {
+  return `
+  <div class="page-title">Tutorial</div>
+  <div class="page-sub">Como usar o sistema e exportar extratos de cada cartão</div>
+
+  <!-- ÍNDICE -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-title">Índice rápido</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      ${[
+        {icon:'◈',label:'Painel geral',anchor:'mod-dashboard'},
+        {icon:'◉',label:'Orçamento',anchor:'mod-orcamento'},
+        {icon:'⌂',label:'Financiamento',anchor:'mod-financiamento'},
+        {icon:'▬',label:'Cartão de crédito',anchor:'mod-cartao'},
+        {icon:'◎',label:'Contas da casa',anchor:'mod-casa'},
+        {icon:'◷',label:'Consórcio',anchor:'mod-consorcio'},
+        {icon:'◁',label:'Viagens',anchor:'mod-viagens'},
+        {icon:'◆',label:'Fundo de reserva',anchor:'mod-reserva'},
+        {icon:'◑',label:'Análise de cartões',anchor:'mod-analise'},
+        {icon:'📥',label:'Exportar Nubank',anchor:'banco-nubank'},
+        {icon:'📥',label:'Exportar C6 Bank',anchor:'banco-c6'},
+        {icon:'📥',label:'Exportar XP',anchor:'banco-xp'},
+        {icon:'📥',label:'Exportar Mercado Pago',anchor:'banco-mp'},
+      ].map(i=>`
+        <a href="#${i.anchor}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);background:var(--surface2);font-size:13px;color:var(--text2);text-decoration:none" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='var(--surface2)'">
+          <span style="font-size:14px">${i.icon}</span>${i.label}
+        </a>`).join('')}
+    </div>
+  </div>
+
+  <!-- MÓDULOS DO SISTEMA -->
+  <div style="font-size:16px;font-weight:500;margin-bottom:12px;padding-top:4px">Como funciona cada módulo</div>
+
+  ${[
+    {
+      id:'mod-dashboard', icon:'◈', title:'Painel geral',
+      desc:'Visão consolidada das finanças do mês. Atualiza automaticamente sempre que você edita qualquer módulo.',
+      items:[
+        'Mostra renda total, valor comprometido e saldo livre do mês',
+        'Gráfico de barras com a distribuição dos gastos por categoria',
+        'Alertas automáticos de contas pendentes ou atrasadas',
+        'Indicador de progresso do fundo de reserva',
+        'Alerta em laranja quando o comprometimento passa de 70% da renda',
+      ]
+    },
+    {
+      id:'mod-orcamento', icon:'◉', title:'Orçamento mensal',
+      desc:'Cadastre as fontes de renda do casal e acompanhe os limites ideais por categoria.',
+      items:[
+        'Adicione cada fonte de renda (salário Lucas, salário Fer, renda extra)',
+        'As metas por categoria são calculadas automaticamente como % da renda total',
+        'Barras ficam vermelhas quando o gasto passa do limite sugerido',
+        'Clique em ✎ para editar qualquer renda cadastrada',
+        'Só exportar faturas fechadas — Nubank não permite fatura aberta em CSV',
+      ]
+    },
+    {
+      id:'mod-financiamento', icon:'⌂', title:'Financiamento imobiliário',
+      desc:'Acompanhe o saldo devedor e simule cenários de migração bancária.',
+      items:[
+        'Edite os dados do contrato atual diretamente na página e clique em Salvar',
+        'O simulador SAC recalcula automaticamente conforme você muda taxa ou prazo',
+        'O comparativo mostra a 1ª parcela estimada de cada banco automaticamente',
+        'Lembre-se: construtora (CUB/SC ~4%) tem custo total menor que bancos (~12%)',
+        'Migrar para banco reduz a parcela mensal mas aumenta muito o custo total',
+      ]
+    },
+    {
+      id:'mod-cartao', icon:'▬', title:'Cartão de crédito',
+      desc:'Lançamentos manuais do mês com categorização. Para análise histórica, use a aba Análise de cartões.',
+      items:[
+        'Adicione lançamentos manualmente pelo botão + Adicionar',
+        'A categoria de cada lançamento pode ser alterada pelo select diretamente na tabela',
+        'Este módulo é para controle mensal simples — não use para histórico',
+        'Para análise histórica com comparativo entre meses, use a aba Análise de cartões',
+      ]
+    },
+    {
+      id:'mod-casa', icon:'◎', title:'Contas da casa',
+      desc:'Controle de despesas fixas mensais e planejamento de compras de mobília.',
+      items:[
+        'Altere o status de cada conta (pendente → pago) pelo select na tabela',
+        'Clique em ✎ para editar valor, dia de vencimento ou status',
+        'A seção de mobília serve para planejar compras com prioridade e orçamento',
+        'O total de mobília estimada aparece no card de métricas para visibilidade no fluxo',
+      ]
+    },
+    {
+      id:'mod-consorcio', icon:'◷', title:'Consórcio',
+      desc:'Acompanhamento do contrato e simulação de quanto dar de lance para contemplação.',
+      items:[
+        'Edite todos os dados do contrato diretamente na página e clique em Salvar',
+        'A barra de progresso mostra % do prazo já pago',
+        'O simulador de lance calcula o saldo restante e nova parcela após contemplação',
+        'Média histórica de lances no Brasil: ~19% do valor da carta de crédito',
+      ]
+    },
+    {
+      id:'mod-viagens', icon:'◁', title:'Planejamento de viagens',
+      desc:'Metas de economia por destino com estimativa de quando a meta será atingida.',
+      items:[
+        'Adicione cada viagem com destino, data prevista e orçamento necessário',
+        'O valor economizado atualiza conforme você registra — deixe em 0 para novas',
+        'O simulador calcula quantos meses faltam para atingir a meta',
+        'Clique em ✎ para atualizar o valor economizado mês a mês',
+      ]
+    },
+    {
+      id:'mod-reserva', icon:'◆', title:'Fundo de reserva',
+      desc:'Acompanhamento da reserva de emergência com meta de 3 a 6 meses de gastos.',
+      items:[
+        'Edite o saldo atual mensalmente para manter o progresso atualizado',
+        'A meta recomendada é 3 meses de despesas totais (valor comprometido × 3)',
+        'O simulador mostra em que mês a meta será atingida com o aporte atual',
+        'O rendimento estimado considera 8% a.a. — ajuste conforme sua aplicação real',
+      ]
+    },
+    {
+      id:'mod-analise', icon:'◑', title:'Análise de cartões',
+      desc:'Importe extratos CSV ou PDF de múltiplos cartões para comparar meses e identificar padrões.',
+      items:[
+        'Importe múltiplos arquivos de uma vez — o sistema detecta o banco automaticamente',
+        'Nubank, XP e C6 exportam CSV · Mercado Pago exporta PDF',
+        'Categorização automática por palavras-chave da descrição (ex: iFood → Alimentação)',
+        'Mude a categoria de qualquer lançamento pelo select na tabela',
+        'Duplicatas são detectadas automaticamente e mostradas para você revisar',
+        'A previsão do próximo mês é a média dos últimos 3 meses por categoria',
+        'Alertas aparecem quando um categoria está 30%+ acima da média histórica',
+        'Clique em Salvar no Firebase para guardar os lançamentos permanentemente',
+      ]
+    },
+  ].map(m=>`
+    <div class="card" id="${m.id}" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="width:32px;height:32px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--accent-dark);flex-shrink:0">${m.icon}</span>
+        <div>
+          <div style="font-size:15px;font-weight:500">${m.title}</div>
+          <div style="font-size:13px;color:var(--text2);margin-top:2px">${m.desc}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${m.items.map(item=>`
+          <div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text2)">
+            <span style="color:var(--accent);flex-shrink:0;margin-top:1px">→</span>
+            <span>${item}</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('')}
+
+  <!-- COMO EXPORTAR EXTRATOS -->
+  <div style="font-size:16px;font-weight:500;margin:24px 0 12px">Como exportar o extrato de cada cartão</div>
+
+  <!-- NUBANK -->
+  <div class="card" id="banco-nubank" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:36px;height:36px;border-radius:8px;background:#820AD1;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:700;flex-shrink:0">N</div>
+      <div>
+        <div style="font-size:15px;font-weight:500">Nubank</div>
+        <div style="font-size:12px;color:var(--text2)">CSV via app · você recebe no WhatsApp ou e-mail</div>
+      </div>
+      <span class="badge b-ok" style="margin-left:auto">CSV</span>
+    </div>
+    <div class="alert a-info" style="margin-bottom:12px">Só é possível exportar faturas fechadas. A fatura aberta (mês atual) não pode ser exportada em CSV.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${[
+        {n:1, txt:'Abra o app do Nubank no celular'},
+        {n:2, txt:'Na tela inicial, toque em <strong>Cartão de crédito</strong>'},
+        {n:3, txt:'Role para baixo e toque na fatura do mês que quer exportar (apenas faturas fechadas)'},
+        {n:4, txt:'Toque em <strong>Baixar fatura</strong> (ícone de seta para baixo, canto superior direito)'},
+        {n:5, txt:'Selecione o formato <strong>CSV</strong> (não PDF)'},
+        {n:6, txt:'O arquivo será enviado para o seu <strong>e-mail cadastrado</strong> ou você pode compartilhar direto pelo celular'},
+        {n:7, txt:'Para enviar ao computador: <strong>compartilhe para o WhatsApp Web</strong> ou para seu e-mail e baixe no computador'},
+        {n:8, txt:'No sistema: vá em <strong>Análise de cartões → selecione o arquivo CSV</strong> e importe'},
+      ].map(s=>`<div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="width:22px;height:22px;border-radius:50%;background:#820AD120;color:#820AD1;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${s.n}</span>
+        <span style="font-size:13px;color:var(--text2)">${s.txt}</span>
+      </div>`).join('')}
+    </div>
+    <div class="alert a-warn" style="margin-top:12px">O CSV do Nubank tem 3 colunas: <code style="font-family:var(--font-mono);font-size:12px">date, title, amount</code> — o sistema já sabe ler esse formato.</div>
+  </div>
+
+  <!-- C6 -->
+  <div class="card" id="banco-c6" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:36px;height:36px;border-radius:8px;background:#1A1A1A;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700;flex-shrink:0">C6</div>
+      <div>
+        <div style="font-size:15px;font-weight:500">C6 Bank</div>
+        <div style="font-size:12px;color:var(--text2)">CSV via app · enviado para o e-mail cadastrado</div>
+      </div>
+      <span class="badge b-ok" style="margin-left:auto">CSV por e-mail</span>
+    </div>
+    <div class="alert a-info" style="margin-bottom:12px">O arquivo chega protegido por senha no e-mail. A senha é os <strong>4 últimos dígitos do cartão físico</strong>.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${[
+        {n:1, txt:'Abra o app do C6 Bank'},
+        {n:2, txt:'Na tela inicial toque em <strong>Ver extrato</strong>'},
+        {n:3, txt:'Toque em <strong>Exportar extrato</strong>'},
+        {n:4, txt:'Escolha o <strong>período desejado</strong> (limite de 180 dias por arquivo)'},
+        {n:5, txt:'Toque em <strong>Gerar extrato</strong>'},
+        {n:6, txt:'Aguarde alguns minutos — o arquivo é <strong>enviado para o e-mail cadastrado</strong>'},
+        {n:7, txt:'Abra o e-mail, baixe o anexo e <strong>use os 4 últimos dígitos do cartão</strong> como senha para abrir'},
+        {n:8, txt:'No sistema: vá em <strong>Análise de cartões → selecione o CSV</strong> e importe'},
+      ].map(s=>`<div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="width:22px;height:22px;border-radius:50%;background:#1A1A1A20;color:#1A1A1A;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${s.n}</span>
+        <span style="font-size:13px;color:var(--text2)">${s.txt}</span>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- XP -->
+  <div class="card" id="banco-xp" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:36px;height:36px;border-radius:8px;background:#FF6B00;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700;flex-shrink:0">XP</div>
+      <div>
+        <div style="font-size:15px;font-weight:500">XP Investimentos</div>
+        <div style="font-size:12px;color:var(--text2)">CSV via app · compartilhado direto pelo celular ou e-mail</div>
+      </div>
+      <span class="badge b-ok" style="margin-left:auto">CSV via app</span>
+    </div>
+    <div class="alert a-info" style="margin-bottom:12px">A XP também envia a fatura automaticamente por e-mail todo mês. Verifique sua caixa de entrada antes de exportar.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${[
+        {n:1, txt:'Abra o app da XP Investimentos'},
+        {n:2, txt:'Toque em <strong>Produtos</strong> (menu inferior)'},
+        {n:3, txt:'Selecione <strong>Cartão de crédito</strong>'},
+        {n:4, txt:'Toque em <strong>Resumo</strong> e depois em <strong>Detalhe da fatura</strong>'},
+        {n:5, txt:'Escolha a fatura do mês desejado (apenas faturas fechadas)'},
+        {n:6, txt:'Abaixo do valor total toque em <strong>Exportar fatura</strong>'},
+        {n:7, txt:'Selecione <strong>Exportar Planilha (CSV)</strong> — não selecione PDF'},
+        {n:8, txt:'Compartilhe para o WhatsApp Web ou e-mail e baixe no computador'},
+        {n:9, txt:'No sistema: vá em <strong>Análise de cartões → selecione o CSV</strong> e importe'},
+      ].map(s=>`<div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="width:22px;height:22px;border-radius:50%;background:#FF6B0020;color:#FF6B00;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${s.n}</span>
+        <span style="font-size:13px;color:var(--text2)">${s.txt}</span>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- MERCADO PAGO -->
+  <div class="card" id="banco-mp" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:36px;height:36px;border-radius:8px;background:#009EE3;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;flex-shrink:0">MP</div>
+      <div>
+        <div style="font-size:15px;font-weight:500">Mercado Pago</div>
+        <div style="font-size:12px;color:var(--text2)">PDF via app · envie pelo WhatsApp e baixe no computador</div>
+      </div>
+      <span class="badge b-warn" style="margin-left:auto">PDF</span>
+    </div>
+    <div class="alert a-warn" style="margin-bottom:12px">O Mercado Pago não exporta CSV de fatura de cartão — apenas PDF. O sistema faz a leitura do PDF automaticamente.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${[
+        {n:1, txt:'Abra o app do Mercado Pago'},
+        {n:2, txt:'Na tela inicial toque em <strong>Ir ao extrato</strong> (abaixo do seu saldo)'},
+        {n:3, txt:'Toque nos <strong>três pontos (⋯)</strong> no canto superior direito'},
+        {n:4, txt:'Selecione <strong>Gerar extrato da conta</strong>'},
+        {n:5, txt:'Toque em <strong>Gerar novo extrato</strong>'},
+        {n:6, txt:'Escolha o <strong>período</strong> (máximo 31 dias por extrato) e o formato <strong>PDF</strong>'},
+        {n:7, txt:'Toque em <strong>Gerar</strong> e aguarde o arquivo ficar disponível'},
+        {n:8, txt:'Toque no arquivo gerado para <strong>compartilhar pelo WhatsApp</strong> para você mesmo ou envie ao e-mail'},
+        {n:9, txt:'Baixe o PDF no computador'},
+        {n:10,txt:'No sistema: vá em <strong>Análise de cartões → selecione o PDF</strong> (escolha Mercado Pago no seletor de banco) e importe'},
+      ].map(s=>`<div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="width:22px;height:22px;border-radius:50%;background:#009EE320;color:#009EE3;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${s.n}</span>
+        <span style="font-size:13px;color:var(--text2)">${s.txt}</span>
+      </div>`).join('')}
+    </div>
+    <div class="alert a-info" style="margin-top:12px">O PDF precisa ter texto selecionável (não pode ser foto). Os extratos gerados pelo app do Mercado Pago sempre têm texto.</div>
+  </div>
+
+  <!-- DICAS GERAIS -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="section-title">Dicas gerais de uso</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${[
+        'Importe extratos de múltiplos meses de uma vez — o sistema agrupa automaticamente por mês',
+        'Você pode importar o mesmo arquivo duas vezes sem problema — duplicatas são detectadas e ignoradas',
+        'Se a categorização automática errar, corrija pelo select na tabela antes de salvar no Firebase',
+        'Para histórico completo, exporte os últimos 6 meses de cada cartão de uma vez',
+        'Nubank e Mercado Pago: envie para o WhatsApp pessoal → WhatsApp Web → baixe no computador',
+        'C6 e XP: verifique o e-mail cadastrado — o arquivo já chega por lá automaticamente ou ao exportar',
+        'Os dados salvos no Firebase ficam disponíveis para os dois usuários (você e a Fer) em qualquer dispositivo',
+      ].map(d=>`<div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text2)">
+        <span style="color:var(--accent);flex-shrink:0">✓</span>
+        <span>${d}</span>
+      </div>`).join('')}
+    </div>
+  </div>`
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
