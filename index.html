@@ -175,16 +175,15 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 
-<!-- FIREBASE SDK -->
 <script>
-// Safety stubs until Firebase module loads
-['doLogin','doLogout','goPage','openModal','closeModal','saveModal',
- 'deleteItem','updateStatus','openEditModal','saveEditModal',
- 'saveFinanciamento','saveConsorcio','saveReserva','atualizarCatCartao',
- 'updateLance','calcViagem','importarCSV','setFiltroAnalise',
- 'recategorizar','removerLancamento','limparDuplicatas','limparDados','salvarNoFirebase'
-].forEach(fn => { if(!window[fn]) window[fn] = (...a) => console.warn(fn+' not ready yet') })
+['doLogin','doLogout','goPage','openModal','closeModal','saveModal','deleteItem',
+ 'updateStatus','openEditModal','saveEditModal','saveFinanciamento','saveConsorcio',
+ 'saveReserva','atualizarCatCartao','updateLance','calcViagem','importarArquivos',
+ 'setFiltroAnalise','recategorizar','removerLancamento','limparDuplicatas',
+ 'limparDados','salvarNoFirebase'
+].forEach(fn=>{if(!window[fn])window[fn]=(...a)=>console.warn(fn+' not ready')})
 </script>
+<!-- FIREBASE SDK -->
 <script type="module">
 // ─── CONFIGURAÇÃO ─────────────────────────────────────────────────────────────
 // 1. Acesse console.firebase.google.com
@@ -458,13 +457,12 @@ function renderDashboard() {
   </div>`
 }
 
-// ─── ORÇAMENTO ────────────────────────────────────────────────────────────────
 
-// ─── EDIT MODAL (inline editing for all modules) ─────────────────────────────
+// ─── EDIT MODAL ───────────────────────────────────────────────────────────────
 const EDIT_CONFIGS = {
   renda: {
-    title: 'Editar renda',
-    fields: (d) => `
+    title:'Editar renda',
+    fields:(d)=>`
       <div class="field-row"><label>Descrição</label><input class="input" id="e-desc" value="${d.desc||''}"/></div>
       <div class="field-row"><label>Valor (R$)</label><input class="input" type="number" id="e-valor" value="${d.valor||0}"/></div>
       <div class="field-row"><label>Responsável</label>
@@ -473,27 +471,27 @@ const EDIT_CONFIGS = {
           <option ${d.owner==='Esposa'?'selected':''}>Esposa</option>
           <option ${d.owner==='Outros'?'selected':''}>Outros</option>
         </select></div>`,
-    save: async (id, s, n) => updateDoc(doc(db,'casal','dados','renda',id), {desc:s('e-desc'),valor:n('e-valor'),owner:s('e-owner')}),
-    page: 'orcamento'
+    save:async(id,s,n)=>updateDoc(doc(db,'casal','dados','renda',id),{desc:s('e-desc'),valor:n('e-valor'),owner:s('e-owner')}),
+    page:'orcamento'
   },
   contas: {
-    title: 'Editar conta',
-    fields: (d) => `
+    title:'Editar conta',
+    fields:(d)=>`
       <div class="field-row"><label>Nome</label><input class="input" id="e-nome" value="${d.nome||''}"/></div>
       <div class="field-row"><label>Valor (R$)</label><input class="input" type="number" id="e-valor" value="${d.valor||0}"/></div>
-      <div class="field-row"><label>Dia de vencimento</label><input class="input" type="number" id="e-dia" value="${d.dia||1}" min="1" max="31"/></div>
+      <div class="field-row"><label>Dia vencimento</label><input class="input" type="number" id="e-dia" value="${d.dia||1}" min="1" max="31"/></div>
       <div class="field-row"><label>Status</label>
         <select class="input" id="e-status">
           <option ${d.status==='pendente'?'selected':''}>pendente</option>
           <option ${d.status==='pago'?'selected':''}>pago</option>
           <option ${d.status==='atrasado'?'selected':''}>atrasado</option>
         </select></div>`,
-    save: async (id, s, n) => updateDoc(doc(db,'casal','dados','contas',id), {nome:s('e-nome'),valor:n('e-valor'),dia:n('e-dia'),status:s('e-status')}),
-    page: 'casa'
+    save:async(id,s,n)=>updateDoc(doc(db,'casal','dados','contas',id),{nome:s('e-nome'),valor:n('e-valor'),dia:n('e-dia'),status:s('e-status')}),
+    page:'casa'
   },
   mobilia: {
-    title: 'Editar item',
-    fields: (d) => `
+    title:'Editar item',
+    fields:(d)=>`
       <div class="field-row"><label>Item</label><input class="input" id="e-item" value="${d.item||''}"/></div>
       <div class="field-row"><label>Valor estimado (R$)</label><input class="input" type="number" id="e-valor" value="${d.valor||0}"/></div>
       <div class="field-row"><label>Prioridade</label>
@@ -506,15 +504,15 @@ const EDIT_CONFIGS = {
         <select class="input" id="e-status">
           <option ${d.status==='aguardando'?'selected':''}>aguardando</option>
           <option ${d.status==='pesquisando'?'selected':''}>pesquisando</option>
-          <option ${d.status==='orçando'?'selected':''}>orçando</option>
+          <option ${d.status==='orcando'?'selected':''}>orçando</option>
           <option ${d.status==='comprado'?'selected':''}>comprado</option>
         </select></div>`,
-    save: async (id, s, n) => updateDoc(doc(db,'casal','dados','mobilia',id), {item:s('e-item'),valor:n('e-valor'),prioridade:s('e-prior'),status:s('e-status')}),
-    page: 'casa'
+    save:async(id,s,n)=>updateDoc(doc(db,'casal','dados','mobilia',id),{item:s('e-item'),valor:n('e-valor'),prioridade:s('e-prior'),status:s('e-status')}),
+    page:'casa'
   },
   viagens: {
-    title: 'Editar viagem',
-    fields: (d) => `
+    title:'Editar viagem',
+    fields:(d)=>`
       <div class="field-row"><label>Destino</label><input class="input" id="e-dest" value="${d.dest||''}"/></div>
       <div class="field-row"><label>Data planejada</label><input class="input" type="date" id="e-data" value="${d.dataViagem||''}"/></div>
       <div class="field-row"><label>Orçamento (R$)</label><input class="input" type="number" id="e-orc" value="${d.orcamento||0}"/></div>
@@ -526,34 +524,28 @@ const EDIT_CONFIGS = {
           <option ${d.status==='confirmado'?'selected':''}>confirmado</option>
           <option ${d.status==='realizado'?'selected':''}>realizado</option>
         </select></div>`,
-    save: async (id, s, n) => updateDoc(doc(db,'casal','dados','viagens',id), {dest:s('e-dest'),dataViagem:s('e-data'),orcamento:n('e-orc'),economizado:n('e-eco'),status:s('e-status')}),
-    page: 'viagens'
+    save:async(id,s,n)=>updateDoc(doc(db,'casal','dados','viagens',id),{dest:s('e-dest'),dataViagem:s('e-data'),orcamento:n('e-orc'),economizado:n('e-eco'),status:s('e-status')}),
+    page:'viagens'
   },
 }
-
 let editModalCtx = null
-
 window.openEditModal = (colName, id) => {
-  const cfg  = EDIT_CONFIGS[colName]
-  if(!cfg) return
-  const data = [...(state[colName]||[])].find(r=>r.id===id) || {}
-  editModalCtx = { colName, id, cfg }
+  const cfg = EDIT_CONFIGS[colName]; if(!cfg) return
+  const data = (state[colName]||[]).find(r=>r.id===id) || {}
+  editModalCtx = {colName, id, cfg}
   document.getElementById('modal-title').textContent = cfg.title
   document.getElementById('modal-body').innerHTML = cfg.fields(data)
   document.getElementById('modal-save').onclick = saveEditModal
   document.getElementById('modal-bg').classList.add('open')
   document.querySelector('#modal-body .input')?.focus()
 }
-
 window.saveEditModal = async () => {
   if(!editModalCtx) return
   const s = id => document.getElementById(id)?.value||''
   const n = id => Number(document.getElementById(id)?.value)||0
   try {
     await editModalCtx.cfg.save(editModalCtx.id, s, n)
-    closeModal()
-    toast('Salvo!')
-    goPage(editModalCtx.cfg.page)
+    closeModal(); toast('Salvo!'); goPage(editModalCtx.cfg.page)
   } catch(e) { toast('Erro ao salvar.', false) }
 }
 
@@ -563,7 +555,7 @@ function renderOrcamento() {
   const gastos = state.contas.reduce((s,c)=>s+Number(c.valor),0)+Number(state.financiamento?.parcela||0)
   return `
   <div class="page-title">Orçamento mensal</div>
-  <div class="page-sub">Renda e distribuição · clique em ✎ para editar qualquer item</div>
+  <div class="page-sub">Renda e distribuição</div>
   <div class="metrics-grid">
     <div class="metric-card"><div class="metric-label">Renda total</div><div class="metric-value" style="color:var(--accent)">${fmt(total)}</div></div>
     <div class="metric-card"><div class="metric-label">Comprometido</div><div class="metric-value" style="color:var(--danger)">${fmt(gastos)}</div></div>
@@ -614,7 +606,7 @@ function renderFinanciamento() {
   const sim = calcSAC(Number(f.saldo), Number(f.taxa), Number(f.prazo))
   return `
   <div class="page-title">Financiamento imobiliário</div>
-  <div class="page-sub">Edite os campos e clique em Salvar para atualizar</div>
+  <div class="page-sub">Acompanhamento e simulador SAC</div>
   <div class="metrics-grid">
     <div class="metric-card"><div class="metric-label">Saldo devedor</div><div class="metric-value">${fmt(f.saldo)}</div><div class="metric-sub">${f.credor}</div></div>
     <div class="metric-card"><div class="metric-label">Parcela atual</div><div class="metric-value" style="color:var(--danger)">${fmt(f.parcela)}</div><div class="metric-sub">${f.indexador}</div></div>
@@ -623,7 +615,7 @@ function renderFinanciamento() {
   <div class="alert a-warn">A construtora (CUB/SC ≈ 4% a.a.) tem custo total menor que os bancos (~12% a.a.). Migração bancária reduz a parcela mas aumenta o custo total.</div>
   <div class="two-col">
     <div class="card">
-      <div class="section-title">Editar dados do contrato</div>
+      <div class="section-title">Dados do contrato</div>
       <div class="field-row"><label>Credor</label><input class="input" id="fi-credor" value="${f.credor||''}"/></div>
       <div class="field-row"><label>Saldo devedor (R$)</label><input class="input" type="number" id="fi-saldo" value="${f.saldo||0}"/></div>
       <div class="field-row"><label>Parcela atual (R$)</label><input class="input" type="number" id="fi-parcela" value="${f.parcela||0}"/></div>
@@ -695,7 +687,7 @@ function renderCartao() {
           <td>
             <select class="input" style="padding:2px 6px;font-size:11px;width:auto"
               onchange="atualizarCatCartao('${c.id}',this.value)">
-              ${['Alimentação','Casa','Saúde','Transporte','Lazer','Pessoal','Variado'].map(cat=>
+              ${['Alimentação','Casa','Saúde','Transporte','Lazer','Pessoal','Variado','Outros'].map(cat=>
                 `<option ${c.cat===cat?'selected':''}>${cat}</option>`).join('')}
             </select>
           </td>
@@ -724,12 +716,12 @@ window.atualizarCatCartao = async (id, cat) => {
 
 // ─── CASA ─────────────────────────────────────────────────────────────────────
 function renderCasa() {
-  const contas   = state.contas.filter(c=>c.cat==='casa')
-  const total    = contas.reduce((s,c)=>s+Number(c.valor),0)
-  const totalMob = state.mobilia.reduce((s,m)=>s+Number(m.valor),0)
+  const contas    = state.contas.filter(c=>c.cat==='casa')
+  const total     = contas.reduce((s,c)=>s+Number(c.valor),0)
+  const totalMob  = state.mobilia.reduce((s,m)=>s+Number(m.valor),0)
   return `
   <div class="page-title">Contas da casa</div>
-  <div class="page-sub">Clique em ✎ para editar qualquer item</div>
+  <div class="page-sub">Despesas fixas e mobília</div>
   <div class="metrics-grid">
     <div class="metric-card"><div class="metric-label">Total mensal</div><div class="metric-value">${fmt(total)}</div></div>
     <div class="metric-card"><div class="metric-label">Pagas</div><div class="metric-value" style="color:var(--accent)">${contas.filter(c=>c.status==='pago').length} / ${contas.length}</div></div>
@@ -787,7 +779,7 @@ function renderConsorcio() {
   const pctPago = Number(c.mesesPagos)/Number(c.mesesTotal)*100
   return `
   <div class="page-title">Consórcio — carro</div>
-  <div class="page-sub">Edite os campos e clique em Salvar para atualizar</div>
+  <div class="page-sub">Acompanhamento e simulação de lance</div>
   <div class="metrics-grid">
     <div class="metric-card"><div class="metric-label">Carta de crédito</div><div class="metric-value">${fmt(c.credito)}</div></div>
     <div class="metric-card"><div class="metric-label">Saldo devedor</div><div class="metric-value">${fmt(c.saldo)}</div></div>
@@ -796,20 +788,19 @@ function renderConsorcio() {
   </div>
   <div class="two-col">
     <div class="card">
-      <div class="section-title">Editar dados do consórcio</div>
+      <div class="section-title">Detalhes</div>
       <div class="field-row"><label>Administradora</label><input class="input" id="cs-admin" value="${c.admin||''}"/></div>
       <div class="field-row"><label>Carta de crédito (R$)</label><input class="input" type="number" id="cs-credito" value="${c.credito||0}"/></div>
       <div class="field-row"><label>Saldo devedor (R$)</label><input class="input" type="number" id="cs-saldo" value="${c.saldo||0}"/></div>
-      <div class="field-row"><label>Parcela mensal (R$)</label><input class="input" type="number" id="cs-parcela" value="${c.parcela||0}"/></div>
+      <div class="field-row"><label>Parcela (R$)</label><input class="input" type="number" id="cs-parcela" value="${c.parcela||0}"/></div>
       <div class="field-row"><label>Grupo / Cota</label>
         <div style="display:flex;gap:8px">
           <input class="input" id="cs-grupo" value="${c.grupo||''}" placeholder="Grupo"/>
           <input class="input" id="cs-cota" value="${c.cota||''}" placeholder="Cota"/>
-        </div>
-      </div>
+        </div></div>
       <div class="field-row"><label>Prazo total (meses)</label><input class="input" type="number" id="cs-total" value="${c.mesesTotal||0}"/></div>
-      <div class="field-row"><label>Meses já pagos</label><input class="input" type="number" id="cs-pagos" value="${c.mesesPagos||0}"/></div>
-      <div class="field-row"><label>Taxa de adm. (%)</label><input class="input" type="number" id="cs-taxa" value="${c.taxaAdm||0}" step="0.1"/></div>
+      <div class="field-row"><label>Meses pagos</label><input class="input" type="number" id="cs-pagos" value="${c.mesesPagos||0}"/></div>
+      <div class="field-row"><label>Taxa adm. (%)</label><input class="input" type="number" id="cs-taxa" value="${c.taxaAdm||0}" step="0.1"/></div>
       <div class="field-row"><label>Próxima assembleia</label><input class="input" type="date" id="cs-assembleia" value="${c.proximaAssembleia||''}"/></div>
       <div class="field-row"><label>Situação</label>
         <select class="input" id="cs-contempl">
@@ -833,24 +824,6 @@ function renderConsorcio() {
   </div>`
 }
 
-window.saveConsorcio = async () => {
-  await setDoc(singleDoc('consorcio'), {
-    admin:             document.getElementById('cs-admin').value,
-    credito:           Number(document.getElementById('cs-credito').value),
-    saldo:             Number(document.getElementById('cs-saldo').value),
-    parcela:           Number(document.getElementById('cs-parcela').value),
-    grupo:             document.getElementById('cs-grupo').value,
-    cota:              document.getElementById('cs-cota').value,
-    mesesTotal:        Number(document.getElementById('cs-total').value),
-    mesesPagos:        Number(document.getElementById('cs-pagos').value),
-    taxaAdm:           Number(document.getElementById('cs-taxa').value),
-    proximaAssembleia: document.getElementById('cs-assembleia').value,
-    contemplado:       document.getElementById('cs-contempl').value === 'true',
-  })
-  toast('Consórcio atualizado!')
-  goPage('consorcio')
-}
-
 window.updateLance = () => {
   const c = state.consorcio
   const lance = Number(document.getElementById('cs-lance')?.value)||0
@@ -863,12 +836,29 @@ window.updateLance = () => {
     <div class="row-item"><span class="row-label">Nova parcela estimada</span><span class="row-value">${fmt(novaParcela)}</span></div>`
 }
 
+window.saveConsorcio = async () => {
+  await setDoc(singleDoc('consorcio'), {
+    admin: document.getElementById('cs-admin').value,
+    credito: Number(document.getElementById('cs-credito').value),
+    saldo: Number(document.getElementById('cs-saldo').value),
+    parcela: Number(document.getElementById('cs-parcela').value),
+    grupo: document.getElementById('cs-grupo').value,
+    cota: document.getElementById('cs-cota').value,
+    mesesTotal: Number(document.getElementById('cs-total').value),
+    mesesPagos: Number(document.getElementById('cs-pagos').value),
+    taxaAdm: Number(document.getElementById('cs-taxa').value),
+    proximaAssembleia: document.getElementById('cs-assembleia').value,
+    contemplado: document.getElementById('cs-contempl').value === 'true',
+  })
+  toast('Consórcio atualizado!'); goPage('consorcio')
+}
+
 // ─── VIAGENS ──────────────────────────────────────────────────────────────────
 function renderViagens() {
   const aporte = state.contas.filter(c=>c.cat==='viagem').reduce((s,c)=>s+Number(c.valor),0)
   return `
   <div class="page-title">Planejamento de viagens</div>
-  <div class="page-sub">Clique em ✎ para editar qualquer viagem</div>
+  <div class="page-sub">Metas de economia por destino</div>
   <div class="metrics-grid">
     <div class="metric-card"><div class="metric-label">Viagens planejadas</div><div class="metric-value">${state.viagens.length}</div></div>
     <div class="metric-card"><div class="metric-label">Aporte mensal</div><div class="metric-value">${fmt(aporte)}</div></div>
@@ -929,7 +919,7 @@ function renderReserva() {
   const d = new Date(); d.setMonth(d.getMonth()+meses)
   return `
   <div class="page-title">Fundo de reserva</div>
-  <div class="page-sub">Edite os campos e clique em Salvar para atualizar</div>
+  <div class="page-sub">Segurança financeira para imprevistos</div>
   <div class="metrics-grid">
     <div class="metric-card"><div class="metric-label">Saldo atual</div><div class="metric-value" style="color:var(--info)">${fmt(r.saldo)}</div><div class="metric-sub">${r.tipo}</div></div>
     <div class="metric-card"><div class="metric-label">Meta</div><div class="metric-value">${fmt(r.meta)}</div></div>
@@ -1044,87 +1034,51 @@ window.deleteItem = async (colName, id, page) => {
   goPage(page)
 }
 
-// ─── UTILS ────────────────────────────────────────────────────────────────────
-const bycat = cat => state.contas.filter(c=>c.cat===cat).reduce((s,c)=>s+Number(c.valor),0)
-
-
-// ─── NAV (updated with analise) ───────────────────────────────────────────────
-// (navPages already declared above - this just overrides goPage to include analise)
 
 // ─── ANÁLISE DE CARTÕES ───────────────────────────────────────────────────────
 const CATEGORIAS = {
-  'Alimentação':  ['ifood','rappi','uber eats','supermercado','mercado','padaria','restaurante','lanchonete','burger','mcdonald','subway','pizza','sushi','açougue','hortifruti','pao de acucar','extra','carrefour','atacadao','assai'],
-  'Transporte':   ['uber','99 ','taxi','combustivel','posto','shell','ipiranga','estacionamento','pedagio','metro','onibus','passagem','latam','gol','azul','embarque'],
-  'Saúde':        ['farmacia','drogaria','droga','ultrafarma','panvel','clinica','medico','laboratorio','hospital','odonto','dentist','academia','smartfit','bluefit'],
+  'Alimentação':  ['ifood','rappi','supermercado','mercado','padaria','restaurante','lanchonete','burger','mcdonald','subway','pizza','sushi','hortifruti','pao de acucar','extra','carrefour','atacadao','assai'],
+  'Transporte':   ['uber','99 ','taxi','combustivel','posto','shell','ipiranga','estacionamento','pedagio','metro','onibus','passagem','latam','gol','azul'],
+  'Saúde':        ['farmacia','drogaria','droga','ultrafarma','panvel','clinica','medico','laboratorio','hospital','odonto','academia','smartfit','bluefit'],
   'Casa':         ['shopee','amazon','magazine','magalu','americanas','casas bahia','leroy','tok stok','reforma','condominio','energia','internet','vivo','claro','tim '],
-  'Lazer':        ['netflix','spotify','amazon prime','disney','hbo','youtube','steam','playstation','xbox','cinema','teatro','show','ingresso'],
-  'Vestuário':    ['renner','riachuelo','c&a','zara','h&m','shein','adidas','nike','centauro','decathlon','arezzo','vivara'],
+  'Lazer':        ['netflix','spotify','amazon prime','disney','hbo','youtube','steam','playstation','xbox','cinema','teatro','ingresso'],
+  'Vestuário':    ['renner','riachuelo','c&a','zara','h&m','shein','adidas','nike','centauro','decathlon','arezzo'],
   'Educação':     ['alura','udemy','coursera','escola','faculdade','curso','livro','livraria'],
-  'Pessoal':      ['salao','barbearia','cabelereiro','manicure','spa','perfume','sephora','boticario','natura'],
-  'Viagem':       ['hotel','pousada','airbnb','booking','decolar','trivago','expedia','transfer'],
-  'Investimento': ['xp investimentos','rico','nuinvest','tesouro','cdb','lci','lca','fundo'],
+  'Pessoal':      ['salao','barbearia','manicure','spa','perfume','sephora','boticario','natura'],
+  'Viagem':       ['hotel','pousada','airbnb','booking','decolar','trivago','expedia'],
+  'Investimento': ['xp investimentos','rico','nuinvest','tesouro','cdb','lci','lca'],
 }
 
 function categorizarAuto(desc) {
-  const d = (desc||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-  for(const [cat, kws] of Object.entries(CATEGORIAS)) {
-    if(kws.some(k => d.includes(k))) return cat
-  }
+  const d=(desc||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+  for(const [cat,kws] of Object.entries(CATEGORIAS)) if(kws.some(k=>d.includes(k))) return cat
   return 'Outros'
 }
 
-function parsarCSV(texto, banco) {
-  const linhas = texto.trim().split('\n').map(l=>l.replace(/\r/,''))
-  // CSV parser that handles quoted fields (e.g. "title with ""quotes""")
-  function splitCSVLine(line) {
-    const cols = []
-    let cur = '', inQ = false
-    for(let i=0; i<line.length; i++) {
-      const ch = line[i]
-      if(ch==='"') {
-        if(inQ && line[i+1]==='"') { cur+='"'; i++ } // escaped quote
-        else inQ = !inQ
-      } else if(ch===',' && !inQ) {
-        cols.push(cur.trim()); cur=''
-      } else cur += ch
-    }
-    cols.push(cur.trim())
-    return cols
+function splitCSV(line) {
+  const cols=[]; let cur='', inQ=false
+  for(let i=0;i<line.length;i++){
+    const ch=line[i]
+    if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++}else inQ=!inQ}
+    else if(ch===','&&!inQ){cols.push(cur.trim());cur=''}
+    else cur+=ch
   }
-
-  const parsers = {
-    // date,title,amount
-    nubank: ls => ls.slice(1).filter(l=>l.trim()).map(l=>{
-      const c=splitCSVLine(l)
-      const val=parseFloat((c[2]||'0').replace(/[^0-9.\-]/g,''))||0
-      return {data:c[0]?.trim(), desc:c[1]?.trim(), valor:Math.abs(val), banco:'Nubank'}
-    }).filter(r=>r.desc&&r.valor>0),
-    // data,descricao,valor (or similar)
-    xp: ls => ls.slice(1).filter(l=>l.trim()).map(l=>{
-      const c=splitCSVLine(l)
-      const val=parseFloat((c[2]||c[1]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0
-      return {data:c[0]?.trim(), desc:c[1]?.trim(), valor:Math.abs(val), banco:'XP'}
-    }).filter(r=>r.desc&&r.valor>0),
-    // data,descricao,parcela,valor
-    c6: ls => ls.slice(1).filter(l=>l.trim()).map(l=>{
-      const c=splitCSVLine(l)
-      const val=parseFloat((c[3]||c[2]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0
-      return {data:c[0]?.trim(), desc:c[1]?.trim(), valor:Math.abs(val), banco:'C6'}
-    }).filter(r=>r.desc&&r.valor>0),
-    // data,tipo,descricao,valor (varies)
-    mercadopago: ls => ls.slice(1).filter(l=>l.trim()).map(l=>{
-      const c=splitCSVLine(l)
-      const desc=(c[2]||c[1]||'').trim()
-      const val=parseFloat((c[c.length-1]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0
-      return {data:c[0]?.trim(), desc, valor:Math.abs(val), banco:'Mercado Pago'}
-    }).filter(r=>r.desc&&r.valor>0),
-  }
-  const rows = (parsers[banco]||parsers.nubank)(linhas)
-  return rows.filter(r=>r.desc&&r.valor>0).map(r=>({...r,categoria:categorizarAuto(r.desc)}))
+  cols.push(cur.trim()); return cols
 }
 
-function detectarBanco(texto, nome) {
-  const t = (nome+texto.slice(0,300)).toLowerCase()
+function parsarCSV(texto, banco) {
+  const ls=texto.trim().split('\n').map(l=>l.replace(/\r/,''))
+  const parsers={
+    nubank: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{const c=splitCSV(l);const v=parseFloat((c[2]||'0').replace(/[^0-9.\-]/g,''))||0;return{data:c[0]?.trim(),desc:c[1]?.trim(),valor:Math.abs(v),banco:'Nubank'}}).filter(r=>r.desc&&r.valor>0),
+    xp: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{const c=splitCSV(l);const v=parseFloat((c[2]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0;return{data:c[0]?.trim(),desc:c[1]?.trim(),valor:Math.abs(v),banco:'XP'}}).filter(r=>r.desc&&r.valor>0),
+    c6: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{const c=splitCSV(l);const v=parseFloat((c[3]||c[2]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0;return{data:c[0]?.trim(),desc:c[1]?.trim(),valor:Math.abs(v),banco:'C6'}}).filter(r=>r.desc&&r.valor>0),
+    mercadopago: ls=>ls.slice(1).filter(l=>l.trim()).map(l=>{const c=splitCSV(l);const v=parseFloat((c[c.length-1]||'0').replace(/[^0-9.,\-]/g,'').replace(',','.'))||0;return{data:c[0]?.trim(),desc:(c[2]||c[1]||'').trim(),valor:Math.abs(v),banco:'Mercado Pago'}}).filter(r=>r.desc&&r.valor>0),
+  }
+  return ((parsers[banco]||parsers.nubank)(ls)).map(r=>({...r,categoria:categorizarAuto(r.desc)}))
+}
+
+function detectarBanco(texto,nome){
+  const t=(nome+texto.slice(0,300)).toLowerCase()
   if(t.includes('nubank')) return 'nubank'
   if(t.includes('c6bank')||t.includes('c6 bank')) return 'c6'
   if(t.includes('mercado pago')) return 'mercadopago'
@@ -1132,46 +1086,38 @@ function detectarBanco(texto, nome) {
   return 'nubank'
 }
 
-function mesLabel(data) {
+function mesLabel(data){
   if(!data) return 'Desconhecido'
-  const d = data.includes('/') ? data.split('/').reverse().join('-') : data
-  try { const dt=new Date(d+'T00:00:00'); return `${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}` }
-  catch { return data.slice(0,7) }
+  const d=data.includes('/')? data.split('/').reverse().join('-'):data
+  try{const dt=new Date(d+'T00:00:00');return `${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`}
+  catch{return data.slice(0,7)}
 }
 
-// Similaridade entre strings para detecção fuzzy de duplicatas
-function similaridade(a, b) {
-  const sa = (a||'').toLowerCase().replace(/\s+/g,'').slice(0,20)
-  const sb = (b||'').toLowerCase().replace(/\s+/g,'').slice(0,20)
+function similaridade(a,b){
+  const sa=(a||'').toLowerCase().replace(/\s+/g,'').slice(0,20)
+  const sb=(b||'').toLowerCase().replace(/\s+/g,'').slice(0,20)
   if(sa===sb) return 1
-  let match=0
-  for(let i=0;i<Math.min(sa.length,sb.length);i++) if(sa[i]===sb[i]) match++
-  return match/Math.max(sa.length,sb.length,1)
+  let m=0; for(let i=0;i<Math.min(sa.length,sb.length);i++) if(sa[i]===sb[i]) m++
+  return m/Math.max(sa.length,sb.length,1)
 }
 
-function detectarDuplicatas(lista) {
-  const dups = []
-  for(let i=0;i<lista.length;i++) {
-    for(let j=i+1;j<lista.length;j++) {
-      const a=lista[i], b=lista[j]
-      const mesmaMes = mesLabel(a.data)===mesLabel(b.data)
-      const mesmoValor = Math.abs(Number(a.valor)-Number(b.valor)) < 0.01
-      const descSimilar = similaridade(a.desc, b.desc) > 0.75
-      if(mesmaMes && mesmoValor && descSimilar) {
-        if(!dups.find(d=>(d.i===i&&d.j===j)||(d.i===j&&d.j===i)))
-          dups.push({i, j, motivo:`Mesmo valor (${fmt(a.valor)}), descrição similar, mesmo mês`})
-      }
-    }
+function detectarDuplicatas(lista){
+  const dups=[]
+  for(let i=0;i<lista.length;i++) for(let j=i+1;j<lista.length;j++){
+    const a=lista[i],b=lista[j]
+    if(mesLabel(a.data)===mesLabel(b.data)&&Math.abs(Number(a.valor)-Number(b.valor))<0.01&&similaridade(a.desc,b.desc)>0.75)
+      if(!dups.find(d=>(d.i===i&&d.j===j)||(d.i===j&&d.j===i)))
+        dups.push({i,j,motivo:`Mesmo valor (${fmt(a.valor)}), descrição similar, mesmo mês`})
   }
   return dups
 }
 
-let analiseState = {lancamentos:[], filtroMes:'todos', filtroBanco:'todos', filtroCat:'todas', chartMes:null, chartCat:null, duplicatas:[]}
+let analiseState={lancamentos:[],filtroMes:'todos',filtroBanco:'todos',filtroCat:'todas',chartMes:null,chartCat:null}
 
-function renderAnalise() {
+function renderAnalise(){
   return `
   <div class="page-title">Análise de cartões</div>
-  <div class="page-sub">Importe extratos CSV · categorize · compare meses</div>
+  <div class="page-sub">Importe CSV ou PDF · compare meses · categorize</div>
   <div class="card">
     <div class="section-title">Importar extrato</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
@@ -1186,399 +1132,237 @@ function renderAnalise() {
         </select>
       </div>
       <div style="flex:2;min-width:200px">
-        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Arquivo CSV ou PDF (múltiplos permitidos)</label>
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Arquivo CSV ou PDF (múltiplos)</label>
         <input type="file" id="csv-input" accept=".csv,.pdf" multiple style="font-size:13px;color:var(--text2);width:100%" onchange="importarArquivos(this.files)"/>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px">
       <div style="background:var(--surface2);border-radius:var(--r);padding:8px 12px">
-        <div style="font-weight:500;margin-bottom:4px;color:var(--text)">CSV</div>
+        <div style="font-weight:500;margin-bottom:4px">CSV</div>
         <div style="color:var(--text3)">Nubank → Perfil → Meus dados</div>
-        <div style="color:var(--text3)">XP → Cartão → Fatura → Exportar</div>
+        <div style="color:var(--text3)">XP → Cartão → Exportar</div>
         <div style="color:var(--text3)">C6 → Cartão → Exportar fatura</div>
       </div>
       <div style="background:var(--surface2);border-radius:var(--r);padding:8px 12px">
-        <div style="font-weight:500;margin-bottom:4px;color:var(--text)">PDF</div>
+        <div style="font-weight:500;margin-bottom:4px">PDF</div>
         <div style="color:var(--text3)">Mercado Pago → Atividades → PDF</div>
-        <div style="color:var(--text3)">Nubank → Fatura → Baixar PDF</div>
-        <div style="color:var(--text3)">Qualquer extrato em PDF com texto</div>
+        <div style="color:var(--text3)">Qualquer extrato PDF com texto</div>
       </div>
     </div>
     <div id="import-status"></div>
   </div>
   <div id="analise-corpo">
     ${analiseState.lancamentos.length===0
-      ? '<div class="alert a-info">Nenhum dado importado ainda. Exporte o CSV do seu cartão e importe acima.</div>'
+      ? '<div class="alert a-info">Nenhum dado importado. Exporte o CSV do seu cartão e importe acima.</div>'
       : renderAnaliseConteudo()}
   </div>`
 }
 
-function renderAnaliseConteudo() {
-  const ls = analiseState.lancamentos
-  const meses  = [...new Set(ls.map(l=>mesLabel(l.data)))].sort()
-  const bancos = [...new Set(ls.map(l=>l.banco))]
-  const cats   = [...new Set(ls.map(l=>l.categoria))].sort()
-
-  let filtrados = ls
-  if(analiseState.filtroMes   !=='todos') filtrados=filtrados.filter(l=>mesLabel(l.data)===analiseState.filtroMes)
-  if(analiseState.filtroBanco !=='todos') filtrados=filtrados.filter(l=>l.banco===analiseState.filtroBanco)
-  if(analiseState.filtroCat   !=='todas') filtrados=filtrados.filter(l=>l.categoria===analiseState.filtroCat)
-
-  const total   = filtrados.reduce((s,l)=>s+Number(l.valor),0)
-  const nMeses  = meses.length||1
-  const totaisMes = meses.map(m=>({mes:m, total:ls.filter(l=>mesLabel(l.data)===m&&(analiseState.filtroBanco==='todos'||l.banco===analiseState.filtroBanco)).reduce((s,l)=>s+Number(l.valor),0)}))
-  const totaisCat = cats.map(c=>({cat:c,total:filtrados.filter(l=>l.categoria===c).reduce((s,l)=>s+Number(l.valor),0)})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total)
-  const mediaCat  = cats.reduce((acc,c)=>{acc[c]=ls.filter(l=>l.categoria===c).reduce((s,l)=>s+Number(l.valor),0)/nMeses;return acc},{})
-  const ultimos3  = meses.slice(-3)
-  const previsao  = cats.map(c=>({cat:c,prev:ls.filter(l=>ultimos3.includes(mesLabel(l.data))&&l.categoria===c).reduce((s,l)=>s+Number(l.valor),0)/Math.min(3,ultimos3.length)})).filter(p=>p.prev>0).sort((a,b)=>b.prev-a.prev)
-  const alertas   = totaisCat.filter(c=>analiseState.filtroMes!=='todos'&&(mediaCat[c.cat]||0)>0&&c.total>mediaCat[c.cat]*1.3)
-
-  // Duplicatas
-  const dups = detectarDuplicatas(ls)
-  analiseState.duplicatas = dups
-
-  setTimeout(()=>{ renderChartMes(totaisMes); renderChartCat(totaisCat) }, 60)
-
+function renderAnaliseConteudo(){
+  const ls=analiseState.lancamentos
+  const meses=[...new Set(ls.map(l=>mesLabel(l.data)))].sort()
+  const bancos=[...new Set(ls.map(l=>l.banco))]
+  const cats=[...new Set(ls.map(l=>l.categoria))].sort()
+  let fil=ls
+  if(analiseState.filtroMes!=='todos') fil=fil.filter(l=>mesLabel(l.data)===analiseState.filtroMes)
+  if(analiseState.filtroBanco!=='todos') fil=fil.filter(l=>l.banco===analiseState.filtroBanco)
+  if(analiseState.filtroCat!=='todas') fil=fil.filter(l=>l.categoria===analiseState.filtroCat)
+  const total=fil.reduce((s,l)=>s+Number(l.valor),0)
+  const nM=meses.length||1
+  const totM=meses.map(m=>({mes:m,total:ls.filter(l=>mesLabel(l.data)===m).reduce((s,l)=>s+Number(l.valor),0)}))
+  const totC=cats.map(c=>({cat:c,total:fil.filter(l=>l.categoria===c).reduce((s,l)=>s+Number(l.valor),0)})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total)
+  const medC=cats.reduce((acc,c)=>{acc[c]=ls.filter(l=>l.categoria===c).reduce((s,l)=>s+Number(l.valor),0)/nM;return acc},{})
+  const ul3=meses.slice(-3)
+  const prev=cats.map(c=>({cat:c,p:ls.filter(l=>ul3.includes(mesLabel(l.data))&&l.categoria===c).reduce((s,l)=>s+Number(l.valor),0)/Math.min(3,ul3.length)})).filter(p=>p.p>0).sort((a,b)=>b.p-a.p)
+  const alertas=totC.filter(c=>analiseState.filtroMes!=='todos'&&(medC[c.cat]||0)>0&&c.total>medC[c.cat]*1.3)
+  const dups=detectarDuplicatas(ls)
+  setTimeout(()=>{renderChartMes(totM);renderChartCat(totC)},60)
   return `
-  <!-- Duplicatas -->
-  ${dups.length>0?`
-  <div class="card" style="border-color:var(--warn)">
+  ${dups.length>0?`<div class="card" style="border-color:var(--warn)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div class="section-title" style="margin:0;color:var(--warn)">Possíveis duplicatas encontradas (${dups.length})</div>
+      <div class="section-title" style="margin:0;color:var(--warn)">Possíveis duplicatas (${dups.length})</div>
       <button class="btn btn-sm" onclick="limparDuplicatas()">Ignorar todas</button>
     </div>
     <div class="tbl-wrap"><table>
       <tr><th>Lançamento A</th><th>Lançamento B</th><th>Motivo</th><th></th></tr>
-      ${dups.map((d,di)=>{
-        const a=ls[d.i], b=ls[d.j]
-        return `<tr style="background:var(--warn-light)">
-          <td style="font-size:12px">${a.data} · ${a.desc} · ${fmt(a.valor)} · ${a.banco}</td>
-          <td style="font-size:12px">${b.data} · ${b.desc} · ${fmt(b.valor)} · ${b.banco}</td>
-          <td style="font-size:12px;color:var(--warn)">${d.motivo}</td>
-          <td style="white-space:nowrap">
-            <button class="btn btn-sm btn-danger" onclick="removerLancamento(${d.j})">Remover B</button>
-          </td>
-        </tr>`}).join('')}
+      ${dups.map(d=>{const a=ls[d.i],b=ls[d.j];return`<tr style="background:var(--warn-light)">
+        <td style="font-size:12px">${a.data}·${a.desc}·${fmt(a.valor)}</td>
+        <td style="font-size:12px">${b.data}·${b.desc}·${fmt(b.valor)}</td>
+        <td style="font-size:12px;color:var(--warn)">${d.motivo}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="removerLancamento(${d.j})">Remover B</button></td>
+      </tr>`}).join('')}
     </table></div>
   </div>`:''}
-
-  <!-- Filtros -->
-  <div class="card">
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-      <div class="field-row" style="margin:0;flex:1;min-width:110px">
-        <label>Mês</label>
-        <select class="input" onchange="setFiltroAnalise('filtroMes',this.value)">
-          <option value="todos" ${analiseState.filtroMes==='todos'?'selected':''}>Todos</option>
-          ${meses.map(m=>`<option value="${m}" ${analiseState.filtroMes===m?'selected':''}>${m}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field-row" style="margin:0;flex:1;min-width:110px">
-        <label>Banco</label>
-        <select class="input" onchange="setFiltroAnalise('filtroBanco',this.value)">
-          <option value="todos">Todos</option>
-          ${bancos.map(b=>`<option value="${b}" ${analiseState.filtroBanco===b?'selected':''}>${b}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field-row" style="margin:0;flex:1;min-width:110px">
-        <label>Categoria</label>
-        <select class="input" onchange="setFiltroAnalise('filtroCat',this.value)">
-          <option value="todas">Todas</option>
-          ${cats.map(c=>`<option value="${c}" ${analiseState.filtroCat===c?'selected':''}>${c}</option>`).join('')}
-        </select>
-      </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" onclick="limparDados()">Limpar tudo</button>
-        <button class="btn btn-primary btn-sm" onclick="salvarNoFirebase()">Salvar no Firebase</button>
-      </div>
+  <div class="card"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+    <div class="field-row" style="margin:0;flex:1;min-width:100px"><label>Mês</label>
+      <select class="input" onchange="setFiltroAnalise('filtroMes',this.value)">
+        <option value="todos">Todos</option>
+        ${meses.map(m=>`<option value="${m}" ${analiseState.filtroMes===m?'selected':''}>${m}</option>`).join('')}
+      </select></div>
+    <div class="field-row" style="margin:0;flex:1;min-width:100px"><label>Banco</label>
+      <select class="input" onchange="setFiltroAnalise('filtroBanco',this.value)">
+        <option value="todos">Todos</option>
+        ${bancos.map(b=>`<option value="${b}" ${analiseState.filtroBanco===b?'selected':''}>${b}</option>`).join('')}
+      </select></div>
+    <div class="field-row" style="margin:0;flex:1;min-width:100px"><label>Categoria</label>
+      <select class="input" onchange="setFiltroAnalise('filtroCat',this.value)">
+        <option value="todas">Todas</option>
+        ${cats.map(c=>`<option value="${c}" ${analiseState.filtroCat===c?'selected':''}>${c}</option>`).join('')}
+      </select></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-sm" onclick="limparDados()">Limpar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarNoFirebase()">Salvar no Firebase</button>
     </div>
-  </div>
-
-  <!-- Métricas -->
+  </div></div>
   <div class="metrics-grid">
-    <div class="metric-card"><div class="metric-label">Total filtrado</div><div class="metric-value" style="color:var(--warn)">${fmt(total)}</div><div class="metric-sub">${filtrados.length} lançamentos</div></div>
-    <div class="metric-card"><div class="metric-label">Média mensal</div><div class="metric-value">${fmt(totaisMes.reduce((s,m)=>s+m.total,0)/nMeses)}</div><div class="metric-sub">${nMeses} meses</div></div>
-    <div class="metric-card"><div class="metric-label">Maior categoria</div><div class="metric-value" style="font-size:15px">${totaisCat[0]?.cat||'—'}</div><div class="metric-sub">${fmt(totaisCat[0]?.total||0)}</div></div>
-    <div class="metric-card"><div class="metric-label">Previsão próx. mês</div><div class="metric-value" style="color:var(--info)">${fmt(previsao.reduce((s,p)=>s+p.prev,0))}</div><div class="metric-sub">média últimos 3 meses</div></div>
+    <div class="metric-card"><div class="metric-label">Total filtrado</div><div class="metric-value" style="color:var(--warn)">${fmt(total)}</div><div class="metric-sub">${fil.length} lançamentos</div></div>
+    <div class="metric-card"><div class="metric-label">Média mensal</div><div class="metric-value">${fmt(totM.reduce((s,m)=>s+m.total,0)/nM)}</div><div class="metric-sub">${nM} meses</div></div>
+    <div class="metric-card"><div class="metric-label">Maior categoria</div><div class="metric-value" style="font-size:15px">${totC[0]?.cat||'—'}</div><div class="metric-sub">${fmt(totC[0]?.total||0)}</div></div>
+    <div class="metric-card"><div class="metric-label">Previsão próx. mês</div><div class="metric-value" style="color:var(--info)">${fmt(prev.reduce((s,p)=>s+p.p,0))}</div><div class="metric-sub">média 3 meses</div></div>
   </div>
-
-  ${alertas.map(a=>`<div class="alert a-warn">Alerta: <strong>${a.cat}</strong> — ${fmt(a.total)} vs. média ${fmt(mediaCat[a.cat])} (+${(((a.total/mediaCat[a.cat])-1)*100).toFixed(0)}%)</div>`).join('')}
-
-  <!-- Gráficos -->
+  ${alertas.map(a=>`<div class="alert a-warn">Alerta: <strong>${a.cat}</strong> — ${fmt(a.total)} vs. média ${fmt(medC[a.cat])} (+${(((a.total/medC[a.cat])-1)*100).toFixed(0)}%)</div>`).join('')}
   <div class="two-col">
-    <div class="card"><div class="section-title">Gasto total por mês</div><canvas id="chart-mes" height="200"></canvas></div>
+    <div class="card"><div class="section-title">Gasto por mês</div><canvas id="chart-mes" height="200"></canvas></div>
     <div class="card"><div class="section-title">Por categoria</div><canvas id="chart-cat" height="200"></canvas></div>
   </div>
-
-  <!-- Comparativo meses -->
-  <div class="card">
-    <div class="section-title">Comparativo mês a mês</div>
+  <div class="card"><div class="section-title">Comparativo mês a mês</div>
     <div class="tbl-wrap"><table>
       <tr><th>Categoria</th>${meses.map(m=>`<th>${m}</th>`).join('')}<th>Média</th><th>Previsão</th></tr>
-      ${totaisCat.map(c=>{
-        const porMes=meses.map(m=>ls.filter(l=>mesLabel(l.data)===m&&l.categoria===c.cat).reduce((s,l)=>s+Number(l.valor),0))
-        const media=porMes.reduce((s,v)=>s+v,0)/nMeses
-        const prev=previsao.find(p=>p.cat===c.cat)?.prev||0
-        const mx=Math.max(...porMes)
-        return `<tr>
-          <td><strong>${c.cat}</strong></td>
-          ${porMes.map(v=>`<td style="color:${v===mx&&v>0?'var(--danger)':'inherit'};font-weight:${v===mx&&v>0?'500':'400'}">${v>0?fmt(v):'—'}</td>`).join('')}
-          <td style="color:var(--text2)">${fmt(media)}</td>
-          <td style="color:var(--info)">${fmt(prev)}</td>
-        </tr>`}).join('')}
-      <tr style="font-weight:500">
-        <td>Total</td>
+      ${totC.map(c=>{
+        const pm=meses.map(m=>ls.filter(l=>mesLabel(l.data)===m&&l.categoria===c.cat).reduce((s,l)=>s+Number(l.valor),0))
+        const med=pm.reduce((s,v)=>s+v,0)/nM
+        const pv=prev.find(p=>p.cat===c.cat)?.p||0
+        const mx=Math.max(...pm)
+        return`<tr><td><strong>${c.cat}</strong></td>
+          ${pm.map(v=>`<td style="color:${v===mx&&v>0?'var(--danger)':'inherit'}">${v>0?fmt(v):'—'}</td>`).join('')}
+          <td style="color:var(--text2)">${fmt(med)}</td><td style="color:var(--info)">${fmt(pv)}</td></tr>`}).join('')}
+      <tr style="font-weight:500"><td>Total</td>
         ${meses.map(m=>ls.filter(l=>mesLabel(l.data)===m).reduce((s,l)=>s+Number(l.valor),0)).map(v=>`<td>${fmt(v)}</td>`).join('')}
-        <td>${fmt(totaisMes.reduce((s,m)=>s+m.total,0)/nMeses)}</td>
-        <td style="color:var(--info)">${fmt(previsao.reduce((s,p)=>s+p.prev,0))}</td>
-      </tr>
+        <td>${fmt(totM.reduce((s,m)=>s+m.total,0)/nM)}</td>
+        <td style="color:var(--info)">${fmt(prev.reduce((s,p)=>s+p.p,0))}</td></tr>
     </table></div>
   </div>
-
-  <!-- Lançamentos -->
-  <div class="card">
-    <div class="section-title">Lançamentos (${filtrados.length}${filtrados.length>100?' — mostrando 100 primeiros, filtre para ver todos':''})</div>
+  <div class="card"><div class="section-title">Lançamentos (${fil.length})</div>
     <div class="tbl-wrap"><table>
       <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Banco</th><th>Valor</th><th></th></tr>
-      ${filtrados.slice(0,100).map(l=>{
-        const idx=ls.indexOf(l)
-        return `<tr>
-          <td style="white-space:nowrap;font-size:12px">${l.data||'—'}</td>
-          <td style="font-size:12px">${l.desc}</td>
-          <td>
-            <select class="input" style="padding:2px 6px;font-size:11px;width:auto" onchange="recategorizar(${idx},this.value)">
-              ${[...Object.keys(CATEGORIAS),'Outros'].map(c=>`<option ${c===l.categoria?'selected':''}>${c}</option>`).join('')}
-            </select>
-          </td>
-          <td><span class="badge b-info" style="font-size:10px">${l.banco}</span></td>
-          <td style="white-space:nowrap">${fmt(l.valor)}</td>
-          <td><button class="btn btn-sm btn-danger" onclick="removerLancamento(${idx})">×</button></td>
-        </tr>`}).join('')}
+      ${fil.slice(0,100).map(l=>{const idx=ls.indexOf(l);return`<tr>
+        <td style="font-size:12px;white-space:nowrap">${l.data||'—'}</td>
+        <td style="font-size:12px">${l.desc}</td>
+        <td><select class="input" style="padding:2px 6px;font-size:11px;width:auto" onchange="recategorizar(${idx},this.value)">
+          ${[...Object.keys(CATEGORIAS),'Outros'].map(c=>`<option ${c===l.categoria?'selected':''}>${c}</option>`).join('')}
+        </select></td>
+        <td><span class="badge b-info" style="font-size:10px">${l.banco}</span></td>
+        <td style="white-space:nowrap">${fmt(l.valor)}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="removerLancamento(${idx})">×</button></td>
+      </tr>`}).join('')}
+      ${fil.length>100?`<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:12px">... mais ${fil.length-100} (filtre por mês)</td></tr>`:''}
     </table></div>
   </div>`
 }
 
-function renderChartMes(dados) {
-  const el=document.getElementById('chart-mes'); if(!el) return
-  if(analiseState.chartMes) analiseState.chartMes.destroy()
-  analiseState.chartMes = new Chart(el,{type:'bar',data:{labels:dados.map(d=>d.mes),datasets:[{label:'Total',data:dados.map(d=>d.total),backgroundColor:'#378add55',borderColor:'#378add',borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'R$ '+Math.round(v).toLocaleString('pt-BR')}}}}})
+function renderChartMes(d){
+  const el=document.getElementById('chart-mes');if(!el)return
+  if(analiseState.chartMes)analiseState.chartMes.destroy()
+  analiseState.chartMes=new Chart(el,{type:'bar',data:{labels:d.map(x=>x.mes),datasets:[{label:'Total',data:d.map(x=>x.total),backgroundColor:'#378add55',borderColor:'#378add',borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'R$ '+Math.round(v).toLocaleString('pt-BR')}}}}})
 }
-function renderChartCat(dados) {
-  const el=document.getElementById('chart-cat'); if(!el) return
-  if(analiseState.chartCat) analiseState.chartCat.destroy()
+function renderChartCat(d){
+  const el=document.getElementById('chart-cat');if(!el)return
+  if(analiseState.chartCat)analiseState.chartCat.destroy()
   const cores=['#1D9E75','#378add','#ba7517','#e24b4a','#7f77dd','#D85A30','#D4537E','#639922','#888780','#0F6E56','#FAC775']
-  analiseState.chartCat = new Chart(el,{type:'doughnut',data:{labels:dados.map(d=>d.cat),datasets:[{data:dados.map(d=>d.total),backgroundColor:cores,borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: R$ ${Math.round(ctx.raw).toLocaleString('pt-BR')}`}}}}})
+  analiseState.chartCat=new Chart(el,{type:'doughnut',data:{labels:d.map(x=>x.cat),datasets:[{data:d.map(x=>x.total),backgroundColor:cores,borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: R$ ${Math.round(ctx.raw).toLocaleString('pt-BR')}`}}}}})
 }
 
-
-// ─── PDF PARSING ──────────────────────────────────────────────────────────────
-async function extrairTextoPDF(file) {
-  if(typeof pdfjsLib==='undefined') { toast('PDF.js ainda carregando, tente novamente.',false); return '' }
-  const buffer = await file.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({data: buffer}).promise
-  let textoTotal = ''
-  for(let i=1; i<=pdf.numPages; i++) {
-    const page = await pdf.getPage(i)
-    const content = await page.getTextContent()
-    // Sort items by Y position (top to bottom) then X (left to right)
-    const items = content.items.sort((a,b) => {
-      const dy = Math.round(b.transform[5]) - Math.round(a.transform[5])
-      return dy !== 0 ? dy : a.transform[4] - b.transform[4]
-    })
-    // Group items into lines by Y coordinate
-    let currentY = null, currentLine = []
-    for(const item of items) {
-      const y = Math.round(item.transform[5])
-      if(currentY === null) currentY = y
-      if(Math.abs(y - currentY) > 3) {
-        textoTotal += currentLine.join(' ') + '
-'
-        currentLine = []
-        currentY = y
-      }
-      currentLine.push(item.str.trim())
+async function extrairTextoPDF(file){
+  if(typeof pdfjsLib==='undefined'){toast('PDF.js carregando, tente novamente.',false);return''}
+  const buf=await file.arrayBuffer()
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise
+  let txt=''
+  for(let i=1;i<=pdf.numPages;i++){
+    const pg=await pdf.getPage(i)
+    const ct=await pg.getTextContent()
+    const items=ct.items.sort((a,b)=>{const dy=Math.round(b.transform[5])-Math.round(a.transform[5]);return dy!==0?dy:a.transform[4]-b.transform[4]})
+    let cy=null,cl=[]
+    for(const it of items){
+      const y=Math.round(it.transform[5])
+      if(cy===null)cy=y
+      if(Math.abs(y-cy)>3){txt+=cl.join(' ')+'\n';cl=[];cy=y}
+      cl.push(it.str.trim())
     }
-    if(currentLine.length) textoTotal += currentLine.join(' ') + '
-'
+    if(cl.length)txt+=cl.join(' ')+'\n'
   }
-  return textoTotal
+  return txt
 }
 
-function parsarPDF(texto, banco) {
-  const linhas = texto.split('
-').map(l=>l.trim()).filter(l=>l.length>2)
-  const lancamentos = []
-
-  if(banco==='mercadopago') {
-    // Mercado Pago PDF: linhas com padrão "DD/MM/YYYY descrição R$ valor"
-    // ou "descrição ... valor" com data em linha anterior
-    const reData = /(\d{2}\/\d{2}\/\d{4})/
-    const reValor = /R\$\s*([\d.,]+)/
-    const reValorNeg = /-\s*R\$\s*([\d.,]+)/
-
-    for(let i=0; i<linhas.length; i++) {
-      const linha = linhas[i]
-      const temData = reData.exec(linha)
-      if(!temData) continue
-
-      const data = temData[1].split('/').reverse().join('-')
-      // Look for value on same line or next line
-      const textoCompleto = linha + ' ' + (linhas[i+1]||'')
-      const valorMatch = reValorNeg.exec(textoCompleto) || reValor.exec(textoCompleto)
-      if(!valorMatch) continue
-
-      const valor = parseFloat(valorMatch[1].replace('.','').replace(',','.'))
-      if(!valor || valor <= 0) continue
-
-      // Description: everything between date and value
-      let desc = linha.replace(reData,'').replace(reValor,'').replace(reValorNeg,'').replace(/R\$/g,'').trim()
-      if(desc.length < 2 && linhas[i-1]) desc = linhas[i-1].substring(0,60)
-      if(desc.length < 2) continue
-
-      lancamentos.push({
-        data,
-        desc: desc.substring(0,80),
-        valor,
-        categoria: categorizarAuto(desc),
-        banco: 'Mercado Pago'
-      })
-    }
-    return lancamentos
+function parsarPDF(texto,banco){
+  const ls=texto.split('\n').map(l=>l.trim()).filter(l=>l.length>2)
+  const lncs=[]
+  const reD=/(\d{2}\/\d{2}\/\d{4})/,reV=/R\$\s*([\d.,]+)/,reVN=/-\s*R\$\s*([\d.,]+)/
+  for(let i=0;i<ls.length;i++){
+    const l=ls[i],m=reD.exec(l);if(!m)continue
+    const data=m[1].split('/').reverse().join('-')
+    const tc=l+' '+(ls[i+1]||'')
+    const vm=reVN.exec(tc)||reV.exec(tc);if(!vm)continue
+    const valor=parseFloat(vm[1].replace('.','').replace(',','.'));if(!valor||valor<=0)continue
+    let desc=l.replace(reD,'').replace(reVN,'').replace(reV,'').replace(/R\$/g,'').trim()
+    if(desc.length<2&&ls[i-1])desc=ls[i-1].substring(0,60)
+    if(desc.length<2)continue
+    lncs.push({data,desc:desc.substring(0,80),valor,categoria:categorizarAuto(desc),banco:banco==='mercadopago'?'Mercado Pago':'PDF'})
   }
-
-  // Parser genérico para outros PDFs
-  // Detecta linhas com data + texto + valor monetário
-  const reGenerico = /(\d{2}\/\d{2}\/\d{2,4})\s+(.+?)\s+([\d]{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*$/
-  const reGenerico2 = /(\d{2}\/\d{2}\/\d{2,4})\s+(.{5,60}?)\s+R\$\s*([\d.,]+)/
-
-  for(const linha of linhas) {
-    const m = reGenerico.exec(linha) || reGenerico2.exec(linha)
-    if(!m) continue
-    const partes = m[1].split('/')
-    const data = partes.length===3
-      ? (partes[2].length===2 ? `20${partes[2]}-${partes[1]}-${partes[0]}` : `${partes[2]}-${partes[1]}-${partes[0]}`)
-      : m[1]
-    const desc = m[2].trim()
-    const valor = parseFloat(m[3].replace(/\./g,'').replace(',','.'))
-    if(!desc || !valor || valor<=0) continue
-    lancamentos.push({data, desc: desc.substring(0,80), valor, categoria: categorizarAuto(desc), banco: banco==='auto'?'PDF':banco})
-  }
-  return lancamentos
+  return lncs
 }
 
-// ─── IMPORTAÇÃO UNIFICADA (CSV + PDF) ────────────────────────────────────────
 window.importarArquivos = async (files) => {
-  const st = document.getElementById('import-status')
-  if(st) st.innerHTML='<div class="alert a-info" style="margin-top:8px">Processando arquivos...</div>'
-
-  let novosTotal=0, dupTotal=0, erros=[]
-
-  for(const file of files) {
-    try {
-      const isPDF = file.name.toLowerCase().endsWith('.pdf') || file.type==='application/pdf'
-      const bancoCfg = document.getElementById('banco-sel').value
-
-      let novos = []
-      if(isPDF) {
-        const texto = await extrairTextoPDF(file)
-        if(!texto) { erros.push(file.name+': não foi possível extrair texto'); continue }
-        const banco = bancoCfg==='auto' ? detectarBanco(texto, file.name) : bancoCfg
-        novos = parsarPDF(texto, banco)
-        if(novos.length===0) erros.push(file.name+': nenhum lançamento encontrado no PDF. Verifique se o PDF tem texto selecionável (não é imagem).')
-      } else {
-        const texto = await file.text()
-        const banco = bancoCfg==='auto' ? detectarBanco(texto, file.name) : bancoCfg
-        novos = parsarCSV(texto, banco)
-      }
-
-      for(const novo of novos) {
-        const jaTem = analiseState.lancamentos.some(ex =>
-          mesLabel(ex.data)===mesLabel(novo.data) &&
-          Math.abs(Number(ex.valor)-Number(novo.valor))<0.01 &&
-          similaridade(ex.desc,novo.desc)>0.85
-        )
-        if(!jaTem) { analiseState.lancamentos.push(novo); novosTotal++ }
-        else dupTotal++
-      }
-    } catch(e) {
-      erros.push(file.name+': '+e.message)
-    }
-  }
-
-  analiseState.filtroMes='todos'; analiseState.filtroBanco='todos'; analiseState.filtroCat='todas'
-
-  let statusMsg = novosTotal>0
-    ? `<div class="alert a-ok" style="margin-top:8px">${novosTotal} lançamentos importados.${dupTotal>0?' '+dupTotal+' duplicatas ignoradas.':''}</div>`
-    : '<div class="alert a-warn" style="margin-top:8px">Nenhum lançamento novo encontrado.</div>'
-  if(erros.length>0)
-    statusMsg += `<div class="alert a-danger" style="margin-top:6px">${erros.join('<br>')}</div>`
-  if(st) st.innerHTML=statusMsg
-
-  if(novosTotal>0) document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()
-}
-
-window.importarCSV = async (files) => {
-  let novosTotal=0, dupTotal=0
-  for(const file of files) {
-    const texto = await file.text()
-    const banco = document.getElementById('banco-sel').value==='auto' ? detectarBanco(texto,file.name) : document.getElementById('banco-sel').value
-    const novos = parsarCSV(texto, banco)
-    // Deduplicação fuzzy contra existentes
-    let adicionados=0
-    for(const novo of novos) {
-      const jaTem = analiseState.lancamentos.some(ex =>
-        mesLabel(ex.data)===mesLabel(novo.data) &&
-        Math.abs(Number(ex.valor)-Number(novo.valor))<0.01 &&
-        similaridade(ex.desc,novo.desc)>0.85
-      )
-      if(!jaTem) { analiseState.lancamentos.push(novo); adicionados++ }
-      else dupTotal++
-    }
-    novosTotal+=adicionados
-  }
-  analiseState.filtroMes='todos'; analiseState.filtroBanco='todos'; analiseState.filtroCat='todas'
   const st=document.getElementById('import-status')
-  if(st) st.innerHTML=`<div class="alert a-ok" style="margin-top:8px">${novosTotal} lançamentos importados.${dupTotal>0?` ${dupTotal} duplicatas ignoradas automaticamente.`:''}</div>`
-  document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()
+  if(st)st.innerHTML='<div class="alert a-info" style="margin-top:8px">Processando...</div>'
+  let novos=0,dups=0,erros=[]
+  for(const file of files){
+    try{
+      const isPDF=file.name.toLowerCase().endsWith('.pdf')||file.type==='application/pdf'
+      const bCfg=document.getElementById('banco-sel').value
+      let rows=[]
+      if(isPDF){
+        const txt=await extrairTextoPDF(file)
+        if(!txt){erros.push(file.name+': sem texto');continue}
+        const b=bCfg==='auto'?detectarBanco(txt,file.name):bCfg
+        rows=parsarPDF(txt,b)
+        if(!rows.length)erros.push(file.name+': nenhum lançamento encontrado (verifique se o PDF tem texto selecionável)')
+      }else{
+        const txt=await file.text()
+        const b=bCfg==='auto'?detectarBanco(txt,file.name):bCfg
+        rows=parsarCSV(txt,b)
+      }
+      for(const r of rows){
+        const dup=analiseState.lancamentos.some(e=>mesLabel(e.data)===mesLabel(r.data)&&Math.abs(Number(e.valor)-Number(r.valor))<0.01&&similaridade(e.desc,r.desc)>0.85)
+        if(!dup){analiseState.lancamentos.push(r);novos++}else dups++
+      }
+    }catch(e){erros.push(file.name+': '+e.message)}
+  }
+  analiseState.filtroMes='todos';analiseState.filtroBanco='todos';analiseState.filtroCat='todas'
+  let msg=novos>0?`<div class="alert a-ok" style="margin-top:8px">${novos} lançamentos importados.${dups>0?' '+dups+' duplicatas ignoradas.':''}</div>`:'<div class="alert a-warn" style="margin-top:8px">Nenhum lançamento novo encontrado.</div>'
+  if(erros.length)msg+=`<div class="alert a-danger" style="margin-top:6px">${erros.join('<br>')}</div>`
+  if(st)st.innerHTML=msg
+  if(novos>0)document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()
 }
 
-window.setFiltroAnalise = (campo, valor) => {
-  analiseState[campo]=valor
-  document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()
+window.setFiltroAnalise=(campo,valor)=>{analiseState[campo]=valor;document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()}
+window.recategorizar=(idx,cat)=>{if(analiseState.lancamentos[idx]){analiseState.lancamentos[idx].categoria=cat;toast('Categoria atualizada!')}}
+window.removerLancamento=(idx)=>{analiseState.lancamentos.splice(idx,1);document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()}
+window.limparDuplicatas=()=>{document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()}
+window.limparDados=()=>{
+  if(!confirm('Remover todos os lançamentos?'))return
+  analiseState={lancamentos:[],filtroMes:'todos',filtroBanco:'todos',filtroCat:'todas',chartMes:null,chartCat:null}
+  document.getElementById('analise-corpo').innerHTML='<div class="alert a-info">Dados limpos.</div>'
 }
-
-window.recategorizar = (idx, cat) => {
-  if(analiseState.lancamentos[idx]) { analiseState.lancamentos[idx].categoria=cat; toast('Categoria atualizada!') }
-}
-
-window.removerLancamento = (idx) => {
-  analiseState.lancamentos.splice(idx,1)
-  document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()
-}
-
-window.limparDuplicatas = () => {
-  analiseState.duplicatas=[]
-  document.getElementById('analise-corpo').innerHTML=renderAnaliseConteudo()
-}
-
-window.limparDados = () => {
-  if(!confirm('Remover todos os lançamentos importados?')) return
-  analiseState={lancamentos:[],filtroMes:'todos',filtroBanco:'todos',filtroCat:'todas',chartMes:null,chartCat:null,duplicatas:[]}
-  document.getElementById('analise-corpo').innerHTML='<div class="alert a-info">Dados limpos. Importe novos extratos acima.</div>'
-}
-
-window.salvarNoFirebase = async () => {
-  if(!analiseState.lancamentos.length) { toast('Nenhum lançamento para salvar.',false); return }
-  try {
-    await Promise.all(analiseState.lancamentos.map(l=>addDoc(col('extrato'),l)))
-    toast(`${analiseState.lancamentos.length} lançamentos salvos!`)
-  } catch(e) { toast('Erro ao salvar.',false) }
+window.salvarNoFirebase=async()=>{
+  if(!analiseState.lancamentos.length){toast('Nenhum lançamento.',false);return}
+  try{await Promise.all(analiseState.lancamentos.map(l=>addDoc(col('extrato'),l)));toast(analiseState.lancamentos.length+' lançamentos salvos!')}
+  catch(e){toast('Erro ao salvar.',false)}
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
-
+const bycat = cat => state.contas.filter(c=>c.cat===cat).reduce((s,c)=>s+Number(c.valor),0)
 
 </script>
-<!-- CHART.JS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>
