@@ -275,7 +275,7 @@ const singleDoc = name => doc(db, 'casal', 'config', name, 'v1')
 
 async function loadAll() {
   const mes = currentMonth()
-  const [renda, contas, cartao, viagens, mobilia, fin, cons, res] = await Promise.all([
+  const [renda, contas, cartao, viagens, mobilia, fin, cons, res, extrato] = await Promise.all([
     getDocs(query(col('renda'),    where('mes','==',mes))),
     getDocs(query(col('contas'),   where('mes','==',mes))),
     getDocs(col('cartao')),
@@ -284,6 +284,7 @@ async function loadAll() {
     getDoc(singleDoc('financiamento')),
     getDoc(singleDoc('consorcio')),
     getDoc(singleDoc('reserva')),
+    getDocs(col('extrato')),
   ])
   state.renda       = renda.docs.map(d=>({id:d.id,...d.data()}))
   state.contas      = contas.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.dia-b.dia)
@@ -293,6 +294,17 @@ async function loadAll() {
   state.financiamento = fin.exists() ? fin.data() : {credor:'Construtora',saldo:320000,parcela:3800,taxa:4,prazo:180,indexador:'CUB/SC'}
   state.consorcio   = cons.exists() ? cons.data() : {credito:80000,saldo:55000,parcela:1100,admin:'Porto Seguro',grupo:'412',cota:'47',mesesTotal:80,mesesPagos:31,taxaAdm:14,proximaAssembleia:'2026-04-12',contemplado:false}
   state.reserva     = res.exists() ? res.data() : {saldo:18000,meta:38400,aporte:860,tipo:'CDB liquidez diária'}
+
+  // Carrega extratos do Firebase no analiseState (apenas se ainda não foi carregado na sessão)
+  const doFirebase = extrato.docs.map(d=>({id:d.id,...d.data()}))
+  if(doFirebase.length > 0 && analiseState.lancamentos.length === 0) {
+    analiseState.lancamentos = doFirebase
+  } else if(doFirebase.length > 0 && analiseState.lancamentos.length > 0) {
+    // Mescla: adiciona do Firebase o que não está em memória (identificado pelo id)
+    const idsEmMemoria = new Set(analiseState.lancamentos.map(l=>l.id).filter(Boolean))
+    const novosDoFirebase = doFirebase.filter(l=>!idsEmMemoria.has(l.id))
+    analiseState.lancamentos.push(...novosDoFirebase)
+  }
 
   // Seed automático se estiver vazio
   if(state.renda.length===0) await seedDados()
@@ -1315,6 +1327,10 @@ function renderAnalise(){
       </div>
     </div>
     <div id="import-status"></div>
+    <div style="margin-top:8px;font-size:12px;color:var(--text3)">
+      Após categorizar, clique em <strong>Salvar no Firebase</strong> para persistir entre sessões.
+      Os dados salvos são carregados automaticamente ao abrir o app.
+    </div>
   </div>
   <div id="analise-corpo">
     ${analiseState.lancamentos.length===0
@@ -1652,8 +1668,30 @@ window.limparDados=()=>{
 }
 window.salvarNoFirebase=async()=>{
   if(!analiseState.lancamentos.length){toast('Nenhum lançamento.',false);return}
-  try{await Promise.all(analiseState.lancamentos.map(l=>addDoc(col('extrato'),l)));toast(analiseState.lancamentos.length+' lançamentos salvos!')}
-  catch(e){toast('Erro ao salvar.',false)}
+  try{
+    const btn=document.querySelector('[onclick="salvarNoFirebase()"]')
+    if(btn){btn.disabled=true;btn.textContent='Salvando...'}
+    // Busca ids já existentes no Firebase para não duplicar
+    const snap=await getDocs(col('extrato'))
+    const jaExistem=new Set(snap.docs.map(d=>d.id))
+    // Lançamentos sem id = novos (importados nessa sessão), com id = já salvos
+    const novos=analiseState.lancamentos.filter(l=>!l.id)
+    const existentes=analiseState.lancamentos.filter(l=>l.id)
+    // Salva novos e atualiza existentes (categoria pode ter mudado)
+    await Promise.all([
+      ...novos.map(async l=>{
+        const ref=await addDoc(col('extrato'),l)
+        l.id=ref.id // atualiza o id em memória
+      }),
+      ...existentes.map(l=>{
+        const {id,...dados}=l
+        return setDoc(doc(db,'casal','dados','extrato',id),dados)
+      })
+    ])
+    const total=novos.length+existentes.length
+    toast(novos.length+' novos salvos, '+existentes.length+' atualizados!')
+    if(btn){btn.disabled=false;btn.textContent='Salvar no Firebase'}
+  }catch(e){toast('Erro ao salvar: '+e.message,false);console.error(e)}
 }
 
 
