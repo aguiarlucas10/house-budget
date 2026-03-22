@@ -1308,7 +1308,7 @@ function renderAnaliseConteudo(){
     <div class="tbl-wrap"><table>
       <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Banco</th><th>Valor</th><th></th></tr>
       ${fil.slice(0,100).map(l=>{const idx=ls.indexOf(l);return`<tr>
-        <td style="font-size:12px;white-space:nowrap">${l.data||'—'}</td>
+        <td style="font-size:12px;white-space:nowrap" title="${l.dataOriginal?'Compra em: '+l.dataOriginal:''}">${l.data||'—'}${l.dataOriginal?'<span style="font-size:10px;color:var(--text3);display:block">compra: '+l.dataOriginal+'</span>':''}</td>
         <td style="font-size:12px">${l.desc}</td>
         <td><select class="input" style="padding:2px 6px;font-size:11px;width:auto" onchange="recategorizar(${idx},this.value)">
           ${[...Object.keys(CATEGORIAS),'Outros'].map(c=>`<option ${c===l.categoria?'selected':''}>${c}</option>`).join('')}
@@ -1462,6 +1462,22 @@ window.importarArquivos = async (files) => {
         const txt=await file.text()
         const b=bCfg==='auto'?detectarBanco(txt,file.name):bCfg
         rows=parsarCSV(txt,b)
+      }
+      // Normaliza datas de parcelas antigas para o mês de cobrança
+      if(rows.length>0){
+        const datas=rows.map(r=>r.data).filter(Boolean).sort()
+        const dataMax=datas[datas.length-1]
+        const mesCobranca=dataMax?dataMax.slice(0,7):null
+        if(mesCobranca){
+          const [anoC,mesC]=mesCobranca.split('-').map(Number)
+          const limDate=new Date(anoC,mesC-1-2,1)
+          const limStr=limDate.getFullYear()+'-'+String(limDate.getMonth()+1).padStart(2,'0')
+          rows=rows.map(r=>{
+            const mesTx=r.data?r.data.slice(0,7):''
+            if(mesTx&&mesTx<limStr) return{...r,dataOriginal:r.data,data:mesCobranca+'-01'}
+            return r
+          })
+        }
       }
       for(const r of rows){
         const dup=analiseState.lancamentos.some(e=>mesLabel(e.data)===mesLabel(r.data)&&Math.abs(Number(e.valor)-Number(r.valor))<0.01&&similaridade(e.desc,r.desc)>0.85)
