@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Finanças do Casal</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --font:'DM Sans',system-ui,sans-serif;
+  --bg:#f7f6f3;--surface:#fff;--surface2:#f1f0ec;
+  --border:#e4e2db;--border2:#d0cec6;
+  --text:#1a1917;--text2:#6b6960;--text3:#9b9890;
+  --accent:#1D9E75;--accent-light:#e1f5ee;--accent-dark:#0f6e56;
+  --danger:#e24b4a;--danger-light:#fcebeb;
+  --warn:#ba7517;--warn-light:#faeeda;
+  --info:#378add;--info-light:#e6f1fb;
+  --purple:#7f77dd;--purple-light:#eeedfe;
+  --r:8px;--rl:12px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#111110;--surface:#1c1b19;--surface2:#252421;
+  --border:#2e2d2a;--border2:#3d3c38;
+  --text:#f0ede8;--text2:#a09d96;--text3:#6b6860;
+  --accent-light:#0d3326;--danger-light:#2d1414;
+  --warn-light:#2a1d08;--info-light:#0d1f35;--purple-light:#1a1840;
+}}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:var(--font)}
+
+/* ── Login ── */
+#login-screen{display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px}
+#login-screen.visible{display:flex}
+.login-box{width:100%;max-width:380px}
+.login-logo{width:48px;height:48px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;font-weight:600;margin:0 auto 16px}
+.login-title{font-size:20px;font-weight:500;text-align:center;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:24px}
+.login-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--rl);padding:24px}
+
+/* ── App layout ── */
+#app{display:none;min-height:100vh}
+#app.visible{display:flex}
+aside{width:220px;flex-shrink:0;background:var(--surface);border-right:.5px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+main{flex:1;padding:28px 32px;min-width:0}
+@media(max-width:700px){
+  #app.visible{flex-direction:column}
+  aside{width:100%;height:auto;position:relative;border-right:none;border-bottom:.5px solid var(--border)}
+  main{padding:16px}
+}
+
+/* ── Nav ── */
+.nav-logo{padding:16px;border-bottom:.5px solid var(--border)}
+.nav-logo .name{font-size:15px;font-weight:500}
+.nav-logo .sub{font-size:11px;color:var(--text2);margin-top:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;cursor:pointer;color:var(--text2);border-left:2px solid transparent;transition:background .12s;user-select:none}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{border-left-color:var(--accent);background:var(--surface2);color:var(--accent-dark);font-weight:500}
+.nav-icon{font-size:15px;width:20px;text-align:center}
+.nav-footer{padding:12px 16px;border-top:.5px solid var(--border);margin-top:auto}
+.user-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--accent-dark);flex-shrink:0}
+
+/* ── Components ── */
+.page-title{font-size:18px;font-weight:500;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:20px}
+.card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--rl);padding:16px 18px;margin-bottom:16px}
+.section-title{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.metric-card{background:var(--surface2);border-radius:var(--r);padding:14px 16px}
+.metric-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.metric-value{font-size:22px;font-weight:500}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);font-weight:500;padding:6px 10px;border-bottom:.5px solid var(--border);text-align:left}
+td{padding:9px 10px;border-bottom:.5px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:var(--r)}
+.b-ok{background:var(--accent-light);color:var(--accent-dark)}
+.b-warn{background:var(--warn-light);color:var(--warn)}
+.b-danger{background:var(--danger-light);color:var(--danger)}
+.b-info{background:var(--info-light);color:var(--info)}
+.alert{padding:10px 14px;border-radius:var(--r);font-size:13px;margin-bottom:10px;line-height:1.5}
+.a-ok{background:var(--accent-light);color:var(--accent-dark);border-left:3px solid var(--accent)}
+.a-warn{background:var(--warn-light);color:var(--warn);border-left:3px solid var(--warn)}
+.a-danger{background:var(--danger-light);color:var(--danger);border-left:3px solid var(--danger)}
+.a-info{background:var(--info-light);color:var(--info);border-left:3px solid var(--info)}
+.row-item{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:.5px solid var(--border)}
+.row-item:last-child{border-bottom:none}
+.row-label{font-size:13px;color:var(--text2)}
+.row-value{font-size:13px;font-weight:500}
+.pbar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:6px}
+.pfill{height:100%;border-radius:3px;transition:width .4s}
+.p-green{background:var(--accent)}.p-amber{background:var(--warn)}.p-red{background:var(--danger)}.p-blue{background:var(--info)}.p-purple{background:var(--purple)}
+.input{width:100%;padding:8px 12px;font-size:13px;border:.5px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--text);transition:border-color .15s}
+.input:focus{outline:none;border-color:var(--accent)}
+.field-row{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field-row label{font-size:12px;color:var(--text2)}
+.btn{padding:8px 16px;font-size:13px;font-weight:500;border:.5px solid var(--border2);border-radius:var(--r);background:transparent;color:var(--text);cursor:pointer;transition:background .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--rl);padding:24px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;border:.5px solid var(--border)}
+.modal-title{font-size:16px;font-weight:500;margin-bottom:16px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.loading{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--text2);font-size:13px;gap:10px}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{color:var(--danger);font-size:12px;margin-top:8px;min-height:16px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="visible">
+  <div class="login-box">
+    <div class="login-logo">₢</div>
+    <div class="login-title">Finanças do Casal</div>
+    <div class="login-sub">Entre com sua conta para acessar</div>
+    <div class="login-card">
+      <div class="field-row">
+        <label>E-mail</label>
+        <input class="input" type="email" id="login-email" placeholder="seu@email.com" autocomplete="email"/>
+      </div>
+      <div class="field-row">
+        <label>Senha</label>
+        <input class="input" type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <div class="err" id="login-err"></div>
+      <button class="btn btn-primary" id="login-btn" onclick="doLogin()" style="width:100%;justify-content:center;margin-top:8px;padding:10px">
+        Entrar
+      </button>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--text3);margin-top:16px">Acesso restrito ao casal. Conta criada pelo administrador.</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <aside>
+    <div class="nav-logo">
+      <div class="name">Finanças do Casal</div>
+      <div class="sub" id="nav-month"></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="nav-footer">
+      <div class="user-row">
+        <div class="avatar" id="user-avatar">?</div>
+        <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="user-name">—</div>
+      </div>
+      <button class="btn btn-sm" onclick="doLogout()" style="width:100%;justify-content:center">Sair</button>
+    </div>
+  </aside>
+  <main id="main"><div class="loading"><div class="spinner"></div>Carregando...</div></main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="saveModal()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+// ─── CONFIGURAÇÃO ─────────────────────────────────────────────────────────────
+// 1. Acesse console.firebase.google.com
+// 2. Crie um projeto → adicione um app Web
+// 3. Copie o firebaseConfig e cole aqui substituindo os valores abaixo
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js'
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'
+import { getFirestore, doc, getDoc, setDoc, collection,
+         getDocs, addDoc, deleteDoc, updateDoc, query, where, orderBy }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ5cGxEFHp4tf6Pao7FRAOOXi6_Lxhhm0",
+  authDomain: "house-budget-8b2b6.firebaseapp.com",
+  projectId: "house-budget-8b2b6",
+  storageBucket: "house-budget-8b2b6.firebasestorage.app",
+  messagingSenderId: "996458516516",
+  appId: "1:996458516516:web:0863c29d834244a75d48b1"
+}
+
+const firebaseApp = initializeApp(firebaseConfig)
+const auth        = getAuth(firebaseApp)
+const db          = getFirestore(firebaseApp)
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+const fmt    = v => 'R$ ' + Math.round(Number(v)||0).toLocaleString('pt-BR')
+const fmtPct = v => (Number(v)||0).toFixed(1)+'%'
+const currentMonth = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` }
+const calcSAC = (s,ta,n) => {
+  const tm=ta/12/100, amor=s/n, p1=amor+s*tm, pn=amor+amor*tm
+  let tj=0; for(let i=0;i<n;i++) tj+=(s-i*amor)*tm
+  return {p1,pn,total:s+tj,juros:tj}
+}
+const loadingHTML = (msg='Carregando...') => `<div class="loading"><div class="spinner"></div>${msg}</div>`
+const toast = (msg, ok=true) => {
+  const d=document.createElement('div')
+  d.style.cssText=`position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:8px;font-size:13px;z-index:999;background:${ok?'var(--accent)':'var(--danger)'};color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.15)`
+  d.textContent=msg; document.body.appendChild(d); setTimeout(()=>d.remove(),2500)
+}
+
+// ─── ESTADO ───────────────────────────────────────────────────────────────────
+let state = { renda:[],contas:[],financiamento:{},consorcio:{},cartao:[],viagens:[],reserva:{},mobilia:[] }
+let currentUser = null
+let currentModal = null
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+window.doLogin = async () => {
+  const email  = document.getElementById('login-email').value.trim()
+  const senha  = document.getElementById('login-senha').value
+  const btn    = document.getElementById('login-btn')
+  const errEl  = document.getElementById('login-err')
+  errEl.textContent = ''
+  btn.disabled = true; btn.textContent = 'Entrando...'
+  try {
+    await signInWithEmailAndPassword(auth, email, senha)
+  } catch(e) {
+    errEl.textContent = 'E-mail ou senha incorretos.'
+    btn.disabled = false; btn.textContent = 'Entrar'
+  }
+}
+
+window.doLogout = async () => { await signOut(auth) }
+
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    currentUser = user
+    document.getElementById('login-screen').classList.remove('visible')
+    document.getElementById('app').classList.add('visible')
+    const initials = user.email.slice(0,2).toUpperCase()
+    document.getElementById('user-avatar').textContent = initials
+    document.getElementById('user-name').textContent = user.email.split('@')[0]
+    buildNav()
+    await goPage('dashboard')
+  } else {
+    currentUser = null
+    document.getElementById('login-screen').classList.add('visible')
+    document.getElementById('app').classList.remove('visible')
+    document.getElementById('login-btn').disabled = false
+    document.getElementById('login-btn').textContent = 'Entrar'
+  }
+})
+
+// ─── FIRESTORE HELPERS ────────────────────────────────────────────────────────
+// Dados compartilhados ficam sob /casal/dados/[collection]
+const col  = name => collection(db, 'casal', 'dados', name)
+const singleDoc = name => doc(db, 'casal', 'config', name, 'v1')
+
+async function loadAll() {
+  const mes = currentMonth()
+  const [renda, contas, cartao, viagens, mobilia, fin, cons, res] = await Promise.all([
+    getDocs(query(col('renda'),    where('mes','==',mes))),
+    getDocs(query(col('contas'),   where('mes','==',mes))),
+    getDocs(col('cartao')),
+    getDocs(col('viagens')),
+    getDocs(col('mobilia')),
+    getDoc(singleDoc('financiamento')),
+    getDoc(singleDoc('consorcio')),
+    getDoc(singleDoc('reserva')),
+  ])
+  state.renda       = renda.docs.map(d=>({id:d.id,...d.data()}))
+  state.contas      = contas.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.dia-b.dia)
+  state.cartao      = cartao.docs.map(d=>({id:d.id,...d.data()}))
+  state.viagens     = viagens.docs.map(d=>({id:d.id,...d.data()}))
+  state.mobilia     = mobilia.docs.map(d=>({id:d.id,...d.data()}))
+  state.financiamento = fin.exists() ? fin.data() : {credor:'Construtora',saldo:320000,parcela:3800,taxa:4,prazo:180,indexador:'CUB/SC'}
+  state.consorcio   = cons.exists() ? cons.data() : {credito:80000,saldo:55000,parcela:1100,admin:'Porto Seguro',grupo:'412',cota:'47',mesesTotal:80,mesesPagos:31,taxaAdm:14,proximaAssembleia:'2026-04-12',contemplado:false}
+  state.reserva     = res.exists() ? res.data() : {saldo:18000,meta:38400,aporte:860,tipo:'CDB liquidez diária'}
+
+  // Seed automático se estiver vazio
+  if(state.renda.length===0) await seedDados()
+}
+
+async function seedDados() {
+  const mes = currentMonth()
+  const rendas = [
+    {desc:'Salário Lucas',valor:8000,owner:'Lucas',mes},
+    {desc:'Salário Esposa',valor:5500,owner:'Esposa',mes},
+    {desc:'Outros',valor:300,owner:'Outros',mes},
+  ]
+  const contas = [
+    {nome:'Condomínio',cat:'casa',valor:480,dia:28,status:'pendente',mes},
+    {nome:'Energia (CELESC)',cat:'casa',valor:180,dia:10,status:'pago',mes},
+    {nome:'Água (CASAN)',cat:'casa',valor:90,dia:15,status:'pago',mes},
+    {nome:'Internet (Vivo)',cat:'casa',valor:120,dia:5,status:'pago',mes},
+    {nome:'IPTU (parcela)',cat:'casa',valor:65,dia:10,status:'pendente',mes},
+    {nome:'Seguro residencial',cat:'casa',valor:45,dia:1,status:'pago',mes},
+    {nome:'Fatura cartão XP',cat:'cartao',valor:2100,dia:27,status:'pendente',mes},
+    {nome:'Consórcio Porto Seguro',cat:'consorcio',valor:1100,dia:20,status:'pago',mes},
+    {nome:'Fundo de reserva',cat:'reserva',valor:860,dia:5,status:'pago',mes},
+    {nome:'Fundo de viagens',cat:'viagem',valor:500,dia:5,status:'pago',mes},
+  ]
+  const cartao = [
+    {descricao:'Supermercado',cat:'Alimentação',valor:480,data:'2026-03-05'},
+    {descricao:'iFood (6x)',cat:'Alimentação',valor:210,data:'2026-03-10'},
+    {descricao:'Farmácia',cat:'Saúde',valor:95,data:'2026-03-08'},
+    {descricao:'Shopee / Amazon',cat:'Casa',valor:340,data:'2026-03-12'},
+    {descricao:'Netflix + Spotify',cat:'Lazer',valor:85,data:'2026-03-01'},
+    {descricao:'Roupas',cat:'Pessoal',valor:320,data:'2026-03-15'},
+    {descricao:'Combustível',cat:'Transporte',valor:280,data:'2026-03-18'},
+    {descricao:'Outros',cat:'Variado',valor:290,data:'2026-03-20'},
+  ]
+  const viagens = [
+    {dest:'Litoral SC',dataViagem:'2026-07-15',orcamento:3500,economizado:3000,status:'economizando'},
+    {dest:'Buenos Aires',dataViagem:'2026-11-10',orcamento:5500,economizado:0,status:'planejando'},
+    {dest:'Europa',dataViagem:'2027-06-01',orcamento:18000,economizado:0,status:'planejando'},
+  ]
+  const mobilia = [
+    {item:'Sofá + sala',valor:3500,prioridade:'alta',status:'pesquisando'},
+    {item:'Cama + colchão',valor:2800,prioridade:'alta',status:'pesquisando'},
+    {item:'Ar-condicionado (2x)',valor:4200,prioridade:'alta',status:'orçando'},
+    {item:'Mesa de jantar',valor:1200,prioridade:'media',status:'aguardando'},
+    {item:'Cortinas',valor:900,prioridade:'media',status:'aguardando'},
+  ]
+  await Promise.all([
+    ...rendas.map(r => addDoc(col('renda'), r)),
+    ...contas.map(c => addDoc(col('contas'), c)),
+    ...cartao.map(c => addDoc(col('cartao'), c)),
+    ...viagens.map(v => addDoc(col('viagens'), v)),
+    ...mobilia.map(m => addDoc(col('mobilia'), m)),
+    setDoc(singleDoc('financiamento'), {credor:'Construtora',saldo:320000,parcela:3800,taxa:4,prazo:180,indexador:'CUB/SC'}),
+    setDoc(singleDoc('consorcio'), {credito:80000,saldo:55000,parcela:1100,admin:'Porto Seguro',grupo:'412',cota:'47',mesesTotal:80,mesesPagos:31,taxaAdm:14,proximaAssembleia:'2026-04-12',contemplado:false}),
+    setDoc(singleDoc('reserva'), {saldo:18000,meta:38400,aporte:860,tipo:'CDB liquidez diária'}),
+  ])
+  await loadAll()
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+const navPages = [
+  {id:'dashboard',icon:'◈',label:'Painel geral'},
+  {id:'orcamento',icon:'◉',label:'Orçamento'},
+  {id:'financiamento',icon:'⌂',label:'Financiamento'},
+  {id:'cartao',icon:'▬',label:'Cartão de crédito'},
+  {id:'casa',icon:'◎',label:'Contas da casa'},
+  {id:'consorcio',icon:'◷',label:'Consórcio'},
+  {id:'viagens',icon:'◁',label:'Viagens'},
+  {id:'reserva',icon:'◆',label:'Fundo de reserva'},
+]
+
+function buildNav() {
+  const d=new Date()
+  document.getElementById('nav-month').textContent=MONTHS[d.getMonth()]+' '+d.getFullYear()
+  document.getElementById('nav').innerHTML=navPages.map(p=>
+    `<div class="nav-item" id="nav-${p.id}" onclick="goPage('${p.id}')">
+      <span class="nav-icon">${p.icon}</span>${p.label}
+    </div>`).join('')
+}
+
+window.goPage = async (id) => {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'))
+  document.getElementById('nav-'+id)?.classList.add('active')
+  document.getElementById('main').innerHTML = loadingHTML()
+  await loadAll()
+  const renders = {
+    dashboard:renderDashboard, orcamento:renderOrcamento,
+    financiamento:renderFinanciamento, cartao:renderCartao,
+    casa:renderCasa, consorcio:renderConsorcio,
+    viagens:renderViagens, reserva:renderReserva,
+  }
+  document.getElementById('main').innerHTML = renders[id]?.() || ''
+  window.scrollTo(0,0)
+  if(id==='consorcio') updateLance()
+  if(id==='viagens') calcViagem()
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const totalRenda  = state.renda.reduce((s,r)=>s+Number(r.valor),0)
+  const fin         = Number(state.financiamento?.parcela||0)
+  const totalContas = state.contas.reduce((s,c)=>s+Number(c.valor),0) + fin
+  const livre = totalRenda - totalContas
+  const pct   = totalRenda>0 ? totalContas/totalRenda*100 : 0
+  const cats  = [
+    {l:'Financiamento',v:fin,c:'p-red'},
+    {l:'Cartão',v:bycat('cartao'),c:'p-amber'},
+    {l:'Consórcio',v:bycat('consorcio'),c:'p-blue'},
+    {l:'Contas casa',v:bycat('casa'),c:'p-green'},
+    {l:'Reserva',v:bycat('reserva'),c:'p-purple'},
+    {l:'Viagens',v:bycat('viagem'),c:'p-blue'},
+  ].filter(d=>d.v>0)
+  const alertas = state.contas.filter(c=>c.status==='pendente'||c.status==='atrasado')
+  return `
+  <div class="page-title">Painel geral</div>
+  <div class="page-sub">${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}</div>
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Renda líquida</div><div class="metric-value" style="color:var(--accent)">${fmt(totalRenda)}</div><div class="metric-sub">mensal</div></div>
+    <div class="metric-card"><div class="metric-label">Comprometido</div><div class="metric-value" style="color:${pct>70?'var(--danger)':'var(--warn)'}">${fmt(totalContas)}</div><div class="metric-sub">${fmtPct(pct)} da renda</div></div>
+    <div class="metric-card"><div class="metric-label">Saldo livre</div><div class="metric-value" style="color:${livre<0?'var(--danger)':'var(--text)'}">${fmt(livre)}</div><div class="metric-sub">${fmtPct(100-pct)} da renda</div></div>
+    <div class="metric-card"><div class="metric-label">Fundo de reserva</div><div class="metric-value" style="color:var(--info)">${fmt(state.reserva?.saldo||0)}</div><div class="metric-sub">meta: ${fmt(state.reserva?.meta||0)}</div></div>
+  </div>
+  ${pct>70?'<div class="alert a-warn">Comprometimento acima de 70% — margem apertada para imprevistos.</div>':''}
+  <div class="two-col">
+    <div class="card">
+      <div class="section-title">Distribuição de gastos</div>
+      ${cats.map(d=>`<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:13px">${d.l}</span><span style="font-size:12px;font-weight:500">${fmt(d.v)}</span>
+        </div>
+        <div class="pbar"><div class="pfill ${d.c}" style="width:${Math.min(100,d.v/totalContas*100).toFixed(0)}%"></div></div>
+      </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="section-title">Contas pendentes</div>
+      ${alertas.length===0
+        ? '<div class="alert a-ok">Todas as contas em dia!</div>'
+        : alertas.map(c=>`<div class="alert ${c.status==='atrasado'?'a-danger':'a-warn'}" style="margin-bottom:8px">${c.nome} — ${fmt(c.valor)} · dia ${c.dia}</div>`).join('')}
+      <div class="alert a-ok" style="margin-top:8px">Reserva: ${fmtPct((state.reserva?.saldo||0)/(state.reserva?.meta||1)*100)} da meta</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">Resumo por categoria</div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Categoria</th><th>Valor</th><th>% renda</th><th>Status</th></tr>
+      ${[
+        {l:'Financiamento',v:fin,t:30},
+        {l:'Cartão de crédito',v:bycat('cartao'),t:18},
+        {l:'Contas da casa',v:bycat('casa'),t:12},
+        {l:'Consórcio',v:bycat('consorcio'),t:10},
+        {l:'Viagens',v:bycat('viagem'),t:5},
+        {l:'Fundo de reserva',v:bycat('reserva'),t:10},
+      ].filter(r=>r.v>0).map(r=>{
+        const p=totalRenda>0?r.v/totalRenda*100:0
+        const b=p>r.t?'b-danger':p>r.t*.8?'b-warn':'b-ok'
+        return `<tr><td>${r.l}</td><td>${fmt(r.v)}</td><td>${fmtPct(p)}</td><td><span class="badge ${b}">${p>r.t?'Alto':p>r.t*.8?'Atenção':'OK'}</span></td></tr>`
+      }).join('')}
+      <tr><td><strong>Total</strong></td><td><strong>${fmt(totalContas)}</strong></td><td><strong>${fmtPct(pct)}</strong></td><td></td></tr>
+    </table></div>
+  </div>`
+}
+
+// ─── ORÇAMENTO ────────────────────────────────────────────────────────────────
+function renderOrcamento() {
+  const total = state.renda.reduce((s,r)=>s+Number(r.valor),0)
+  const gastos = state.contas.reduce((s,c)=>s+Number(c.valor),0)+Number(state.financiamento?.parcela||0)
+  return `
+  <div class="page-title">Orçamento mensal</div>
+  <div class="page-sub">Renda e distribuição</div>
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Renda total</div><div class="metric-value" style="color:var(--accent)">${fmt(total)}</div></div>
+    <div class="metric-card"><div class="metric-label">Comprometido</div><div class="metric-value" style="color:var(--danger)">${fmt(gastos)}</div></div>
+    <div class="metric-card"><div class="metric-label">Saldo livre</div><div class="metric-value">${fmt(total-gastos)}</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="section-title" style="margin:0">Fontes de renda</div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('renda')">+ Adicionar</button>
+      </div>
+      ${state.renda.map(r=>`<div class="row-item">
+        <span class="row-label">${r.desc} <span style="font-size:11px;color:var(--text3)">(${r.owner})</span></span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="row-value" style="color:var(--accent)">${fmt(r.valor)}</span>
+          <button class="btn btn-sm btn-danger" onclick="deleteItem('renda','${r.id}','orcamento')">×</button>
+        </span>
+      </div>`).join('')}
+      <div class="row-item"><span class="row-label"><strong>Total</strong></span><span class="row-value" style="color:var(--accent)">${fmt(total)}</span></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Metas por categoria</div>
+      ${[
+        {l:'Financiamento',v:Number(state.financiamento?.parcela||0),lim:total*.30},
+        {l:'Cartão',v:bycat('cartao'),lim:total*.18},
+        {l:'Casa',v:bycat('casa'),lim:total*.12},
+        {l:'Consórcio',v:bycat('consorcio'),lim:total*.10},
+        {l:'Viagens',v:bycat('viagem'),lim:total*.05},
+        {l:'Reserva',v:bycat('reserva'),lim:total*.08},
+      ].map(c=>{
+        const p=c.lim>0?Math.min(100,c.v/c.lim*100):0
+        const over=c.v>c.lim
+        return `<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:13px">${c.l}</span>
+            <span style="font-size:12px;color:${over?'var(--danger)':'var(--text2)'}">${fmt(c.v)} / ${fmt(c.lim)}</span>
+          </div>
+          <div class="pbar"><div class="pfill ${over?'p-red':'p-green'}" style="width:${p.toFixed(0)}%"></div></div>
+        </div>`}).join('')}
+    </div>
+  </div>`
+}
+
+// ─── FINANCIAMENTO ────────────────────────────────────────────────────────────
+function renderFinanciamento() {
+  const f = state.financiamento
+  const sim = calcSAC(Number(f.saldo), Number(f.taxa), Number(f.prazo))
+  return `
+  <div class="page-title">Financiamento imobiliário</div>
+  <div class="page-sub">Acompanhamento e simulador SAC</div>
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Saldo devedor</div><div class="metric-value">${fmt(f.saldo)}</div><div class="metric-sub">${f.credor}</div></div>
+    <div class="metric-card"><div class="metric-label">Parcela atual</div><div class="metric-value" style="color:var(--danger)">${fmt(f.parcela)}</div><div class="metric-sub">${f.indexador}</div></div>
+    <div class="metric-card"><div class="metric-label">Taxa anual</div><div class="metric-value">${fmtPct(f.taxa)}</div><div class="metric-sub">${f.prazo} meses</div></div>
+  </div>
+  <div class="alert a-warn">A construtora (CUB/SC ≈ 4% a.a.) tem custo total menor que os bancos (~12% a.a.). Migração bancária reduz a parcela mas aumenta o custo total.</div>
+  <div class="two-col">
+    <div class="card">
+      <div class="section-title">Dados do contrato</div>
+      <div class="field-row"><label>Credor</label><input class="input" id="fi-credor" value="${f.credor||''}"/></div>
+      <div class="field-row"><label>Saldo devedor (R$)</label><input class="input" type="number" id="fi-saldo" value="${f.saldo||0}"/></div>
+      <div class="field-row"><label>Parcela atual (R$)</label><input class="input" type="number" id="fi-parcela" value="${f.parcela||0}"/></div>
+      <div class="field-row"><label>Taxa anual (%)</label><input class="input" type="number" id="fi-taxa" value="${f.taxa||0}" step="0.01"/></div>
+      <div class="field-row"><label>Prazo (meses)</label><input class="input" type="number" id="fi-prazo" value="${f.prazo||0}"/></div>
+      <div class="field-row"><label>Indexador</label><input class="input" id="fi-indexador" value="${f.indexador||''}"/></div>
+      <button class="btn btn-primary" onclick="saveFinanciamento()">Salvar alterações</button>
+    </div>
+    <div class="card">
+      <div class="section-title">Simulador SAC</div>
+      <div style="background:var(--surface2);border-radius:var(--r);padding:12px 14px;margin-bottom:16px">
+        <div class="row-item"><span class="row-label">1ª parcela</span><span class="row-value" style="color:var(--info)">${fmt(sim.p1)}</span></div>
+        <div class="row-item"><span class="row-label">Última parcela</span><span class="row-value">${fmt(sim.pn)}</span></div>
+        <div class="row-item"><span class="row-label">Total pago</span><span class="row-value">${fmt(sim.total)}</span></div>
+        <div class="row-item"><span class="row-label">Total de juros</span><span class="row-value" style="color:var(--danger)">${fmt(sim.juros)}</span></div>
+      </div>
+      <div class="section-title">Comparativo de opções</div>
+      ${[
+        {l:'Construtora (CUB/SC)',p:Number(f.parcela),note:'menor custo total'},
+        {l:'Itaú 120 meses',p:calcSAC(Number(f.saldo),11.95,120).p1,note:'11,95% a.a.'},
+        {l:'Itaú 200 meses',p:calcSAC(Number(f.saldo),11.95,200).p1,note:'recomendado',rec:true},
+        {l:'Bradesco 200 meses',p:calcSAC(Number(f.saldo),12.30,200).p1,note:'12,30% a.a.'},
+      ].map(o=>`<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:13px">${o.l}${o.rec?' <span class="badge b-ok">recomendado</span>':''}</span>
+          <span style="font-size:13px;font-weight:500">${fmt(o.p)}/mês</span>
+        </div>
+        <div class="pbar"><div class="pfill ${o.rec?'p-green':'p-blue'}" style="width:${Math.min(100,o.p/Number(f.parcela)*100).toFixed(0)}%"></div></div>
+      </div>`).join('')}
+    </div>
+  </div>`
+}
+
+window.saveFinanciamento = async () => {
+  const data = {
+    credor:    document.getElementById('fi-credor').value,
+    saldo:     Number(document.getElementById('fi-saldo').value),
+    parcela:   Number(document.getElementById('fi-parcela').value),
+    taxa:      Number(document.getElementById('fi-taxa').value),
+    prazo:     Number(document.getElementById('fi-prazo').value),
+    indexador: document.getElementById('fi-indexador').value,
+  }
+  await setDoc(singleDoc('financiamento'), data)
+  toast('Financiamento atualizado!')
+  goPage('financiamento')
+}
+
+// ─── CARTÃO ───────────────────────────────────────────────────────────────────
+function renderCartao() {
+  const total = state.cartao.reduce((s,c)=>s+Number(c.valor),0)
+  const cats  = state.cartao.reduce((acc,c)=>{acc[c.cat]=(acc[c.cat]||0)+Number(c.valor);return acc},{})
+  return `
+  <div class="page-title">Cartão de crédito</div>
+  <div class="page-sub">Lançamentos e categorias</div>
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Total da fatura</div><div class="metric-value" style="color:var(--warn)">${fmt(total)}</div></div>
+    <div class="metric-card"><div class="metric-label">Lançamentos</div><div class="metric-value">${state.cartao.length}</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="section-title" style="margin:0">Lançamentos</div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('cartao')">+ Adicionar</button>
+      </div>
+      <div class="tbl-wrap"><table>
+        <tr><th>Descrição</th><th>Categoria</th><th>Valor</th><th></th></tr>
+        ${state.cartao.map(c=>`<tr>
+          <td>${c.descricao}</td>
+          <td><span class="badge b-info">${c.cat}</span></td>
+          <td>${fmt(c.valor)}</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteItem('cartao','${c.id}','cartao')">×</button></td>
+        </tr>`).join('')}
+        <tr><td colspan="2"><strong>Total</strong></td><td><strong>${fmt(total)}</strong></td><td></td></tr>
+      </table></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Por categoria</div>
+      ${Object.entries(cats).map(([cat,val])=>`<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:13px">${cat}</span><span style="font-size:12px;font-weight:500">${fmt(val)}</span>
+        </div>
+        <div class="pbar" style="height:5px"><div class="pfill p-blue" style="width:${(val/total*100).toFixed(0)}%"></div></div>
+      </div>`).join('')}
+    </div>
+  </div>`
+}
+
+// ─── CASA ─────────────────────────────────────────────────────────────────────
+function renderCasa() {
+  const contas    = state.contas.filter(c=>c.cat==='casa')
+  const total     = contas.reduce((s,c)=>s+Number(c.valor),0)
+  const totalMob  = state.mobilia.reduce((s,m)=>s+Number(m.valor),0)
+  return `
+  <div class="page-title">Contas da casa</div>
+  <div class="page-sub">Despesas fixas e mobília</div>
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Total mensal</div><div class="metric-value">${fmt(total)}</div></div>
+    <div class="metric-card"><div class="metric-label">Pagas</div><div class="metric-value" style="color:var(--accent)">${contas.filter(c=>c.status==='pago').length} / ${contas.length}</div></div>
+    <div class="metric-card"><div class="metric-label">Mobília estimada</div><div class="metric-value" style="color:var(--warn)">${fmt(totalMob)}</div></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="section-title" style="margin:0">Contas mensais</div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('conta-casa')">+ Adicionar</button>
+    </div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Conta</th><th>Valor</th><th>Dia</th><th>Status</th><th></th></tr>
+      ${contas.map(c=>`<tr>
+        <td>${c.nome}</td><td>${fmt(c.valor)}</td><td>${c.dia}</td>
+        <td><select class="input" style="padding:3px 6px;font-size:12px;width:auto" onchange="updateStatus('${c.id}',this.value)">
+          <option ${c.status==='pago'?'selected':''}>pago</option>
+          <option ${c.status==='pendente'?'selected':''}>pendente</option>
+          <option ${c.status==='atrasado'?'selected':''}>atrasado</option>
+        </select></td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteItem('contas','${c.id}','casa')">×</button></td>
+      </tr>`).join('')}
+    </table></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="section-title" style="margin:0">Planejamento de mobília</div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('mobilia')">+ Adicionar</button>
+    </div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Item</th><th>Estimativa</th><th>Prioridade</th><th>Status</th><th></th></tr>
+      ${state.mobilia.map(m=>`<tr>
+        <td>${m.item}</td><td>${fmt(m.valor)}</td>
+        <td><span class="badge ${m.prioridade==='alta'?'b-danger':m.prioridade==='media'?'b-warn':'b-info'}">${m.prioridade}</span></td>
+        <td><span class="badge b-info">${m.status}</span></td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteItem('mobilia','${m.id}','casa')">×</button></td>
+      </tr>`).join('')}
+    </table></div>
+  </div>`
+}
+
+window.updateStatus = async (id, status) => {
+  await updateDoc(doc(db,'casal','dados','contas',id), {status})
+  goPage('casa')
+}
+
+// ─── CONSÓRCIO ────────────────────────────────────────────────────────────────
+function renderConsorcio() {
+  const c = state.consorcio
+  const pctPago = Number(c.mesesPagos)/Number(c.mesesTotal)*100
+  return `
+  <div class="page-title">Consórcio — carro</div>
+  <div class="page-sub">Acompanhamento e simulação de lance</div>
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Carta de crédito</div><div class="metric-value">${fmt(c.credito)}</div></div>
+    <div class="metric-card"><div class="metric-label">Saldo devedor</div><div class="metric-value">${fmt(c.saldo)}</div></div>
+    <div class="metric-card"><div class="metric-label">Parcela mensal</div><div class="metric-value">${fmt(c.parcela)}</div></div>
+    <div class="metric-card"><div class="metric-label">Status</div><div class="metric-value" style="font-size:14px"><span class="badge ${c.contemplado?'b-ok':'b-warn'}">${c.contemplado?'Contemplado':'Aguardando'}</span></div></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="section-title">Detalhes</div>
+      <div class="row-item"><span class="row-label">Administradora</span><span class="row-value">${c.admin}</span></div>
+      <div class="row-item"><span class="row-label">Grupo / Cota</span><span class="row-value">${c.grupo} / ${c.cota}</span></div>
+      <div class="row-item"><span class="row-label">Prazo</span><span class="row-value">${c.mesesTotal} meses</span></div>
+      <div class="row-item"><span class="row-label">Meses pagos</span><span class="row-value">${c.mesesPagos} / ${c.mesesTotal}</span></div>
+      <div class="row-item"><span class="row-label">Taxa de adm.</span><span class="row-value">${c.taxaAdm}% total</span></div>
+      <div class="row-item"><span class="row-label">Próxima assembleia</span><span class="row-value">${c.proximaAssembleia||'—'}</span></div>
+      <div style="margin-top:14px">
+        <div class="pbar" style="height:8px"><div class="pfill p-blue" style="width:${pctPago.toFixed(0)}%"></div></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">${pctPago.toFixed(0)}% do prazo concluído</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Simulador de lance</div>
+      <div class="field-row"><label>Valor do lance (R$)</label>
+        <input class="input" type="number" id="cs-lance" value="${Math.round(Number(c.credito)*.19)}" step="500" oninput="updateLance()"/>
+      </div>
+      <div id="cs-result" style="background:var(--surface2);border-radius:var(--r);padding:12px 14px"></div>
+      <div class="alert a-info" style="margin-top:12px">Média histórica: ~19% do crédito (≈ ${fmt(Number(c.credito)*.19)})</div>
+    </div>
+  </div>`
+}
+
+window.updateLance = () => {
+  const c = state.consorcio
+  const lance = Number(document.getElementById('cs-lance')?.value)||0
+  const novoSaldo = Math.max(0, Number(c.saldo)-lance)
+  const novaParcela = novoSaldo>0 ? novoSaldo/(Number(c.mesesTotal)-Number(c.mesesPagos))*1.055 : 0
+  const el = document.getElementById('cs-result')
+  if(el) el.innerHTML=`
+    <div class="row-item"><span class="row-label">Lance como % do crédito</span><span class="row-value">${fmtPct(lance/Number(c.credito)*100)}</span></div>
+    <div class="row-item"><span class="row-label">Saldo pós-contemplação</span><span class="row-value">${fmt(novoSaldo)}</span></div>
+    <div class="row-item"><span class="row-label">Nova parcela estimada</span><span class="row-value">${fmt(novaParcela)}</span></div>`
+}
+
+// ─── VIAGENS ──────────────────────────────────────────────────────────────────
+function renderViagens() {
+  const aporte = state.contas.filter(c=>c.cat==='viagem').reduce((s,c)=>s+Number(c.valor),0)
+  return `
+  <div class="page-title">Planejamento de viagens</div>
+  <div class="page-sub">Metas de economia por destino</div>
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Viagens planejadas</div><div class="metric-value">${state.viagens.length}</div></div>
+    <div class="metric-card"><div class="metric-label">Aporte mensal</div><div class="metric-value">${fmt(aporte)}</div></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="section-title" style="margin:0">Viagens planejadas</div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('viagem')">+ Adicionar</button>
+    </div>
+    <div class="tbl-wrap"><table>
+      <tr><th>Destino</th><th>Período</th><th>Orçamento</th><th>Economizado</th><th>Status</th><th></th></tr>
+      ${state.viagens.map(v=>`<tr>
+        <td>${v.dest}</td>
+        <td>${v.dataViagem||'—'}</td>
+        <td>${fmt(v.orcamento)}</td>
+        <td style="color:${Number(v.economizado)>=Number(v.orcamento)?'var(--accent)':'var(--text2)'}">${fmt(v.economizado)}</td>
+        <td><span class="badge b-info">${v.status}</span></td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteItem('viagens','${v.id}','viagens')">×</button></td>
+      </tr>`).join('')}
+    </table></div>
+  </div>
+  <div class="card">
+    <div class="section-title">Simulador de meta</div>
+    <div class="two-col">
+      <div>
+        <div class="field-row"><label>Custo da viagem (R$)</label><input class="input" type="number" id="vg-custo" value="3500" oninput="calcViagem()"/></div>
+        <div class="field-row"><label>Já economizado (R$)</label><input class="input" type="number" id="vg-atual" value="0" oninput="calcViagem()"/></div>
+        <div class="field-row"><label>Aporte mensal (R$)</label><input class="input" type="number" id="vg-aporte" value="500" oninput="calcViagem()"/></div>
+      </div>
+      <div id="vg-result" style="background:var(--surface2);border-radius:var(--r);padding:12px 14px;align-self:start"></div>
+    </div>
+  </div>`
+}
+
+window.calcViagem = () => {
+  const custo  = Number(document.getElementById('vg-custo')?.value)||0
+  const atual  = Number(document.getElementById('vg-atual')?.value)||0
+  const aporte = Number(document.getElementById('vg-aporte')?.value)||1
+  const falta  = Math.max(0, custo-atual)
+  const meses  = Math.ceil(falta/aporte)
+  const d = new Date(); d.setMonth(d.getMonth()+meses)
+  const el = document.getElementById('vg-result')
+  if(el) el.innerHTML=`
+    <div class="row-item"><span class="row-label">Falta economizar</span><span class="row-value">${fmt(falta)}</span></div>
+    <div class="row-item"><span class="row-label">Meses até a meta</span><span class="row-value" style="color:var(--accent)">${meses===0?'Meta atingida!':meses+' meses'}</span></div>
+    <div class="row-item"><span class="row-label">Data estimada</span><span class="row-value">${d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</span></div>`
+}
+
+// ─── RESERVA ──────────────────────────────────────────────────────────────────
+function renderReserva() {
+  const r = state.reserva
+  const pct   = Math.min(100, Number(r.saldo)/Number(r.meta)*100)
+  const falta = Math.max(0, Number(r.meta)-Number(r.saldo))
+  const meses = Number(r.aporte)>0 ? Math.ceil(falta/Number(r.aporte)) : 999
+  const d = new Date(); d.setMonth(d.getMonth()+meses)
+  return `
+  <div class="page-title">Fundo de reserva</div>
+  <div class="page-sub">Segurança financeira para imprevistos</div>
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="metric-label">Saldo atual</div><div class="metric-value" style="color:var(--info)">${fmt(r.saldo)}</div><div class="metric-sub">${r.tipo}</div></div>
+    <div class="metric-card"><div class="metric-label">Meta</div><div class="metric-value">${fmt(r.meta)}</div></div>
+    <div class="metric-card"><div class="metric-label">Progresso</div><div class="metric-value">${pct.toFixed(0)}%</div></div>
+    <div class="metric-card"><div class="metric-label">Aporte mensal</div><div class="metric-value">${fmt(r.aporte)}</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="section-title">Progresso da meta</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:6px">${fmt(r.saldo)} de ${fmt(r.meta)}</div>
+      <div class="pbar" style="height:12px"><div class="pfill p-blue" style="width:${pct.toFixed(1)}%"></div></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">${pct.toFixed(1)}% da meta</div>
+      <div class="alert a-warn" style="margin-top:14px">Ideal: 3–6 meses de despesas totais para cobrir imprevistos.</div>
+      ${meses<=36?`<div class="alert a-ok" style="margin-top:8px">Meta atingida em: ${d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</div>`:''}
+    </div>
+    <div class="card">
+      <div class="section-title">Editar reserva</div>
+      <div class="field-row"><label>Saldo atual (R$)</label><input class="input" type="number" id="rv-saldo" value="${r.saldo}"/></div>
+      <div class="field-row"><label>Meta (R$)</label><input class="input" type="number" id="rv-meta" value="${r.meta}"/></div>
+      <div class="field-row"><label>Aporte mensal (R$)</label><input class="input" type="number" id="rv-aporte" value="${r.aporte}"/></div>
+      <div class="field-row"><label>Tipo de investimento</label><input class="input" id="rv-tipo" value="${r.tipo}"/></div>
+      <button class="btn btn-primary" onclick="saveReserva()">Salvar</button>
+    </div>
+  </div>`
+}
+
+window.saveReserva = async () => {
+  await setDoc(singleDoc('reserva'), {
+    saldo:  Number(document.getElementById('rv-saldo').value),
+    meta:   Number(document.getElementById('rv-meta').value),
+    aporte: Number(document.getElementById('rv-aporte').value),
+    tipo:   document.getElementById('rv-tipo').value,
+  })
+  toast('Reserva atualizada!')
+  goPage('reserva')
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+window.openModal = (type) => {
+  currentModal = type
+  const titles = {renda:'Nova fonte de renda',cartao:'Novo lançamento','conta-casa':'Nova conta da casa',mobilia:'Item de mobília',viagem:'Nova viagem'}
+  const bodies = {
+    renda:`
+      <div class="field-row"><label>Descrição</label><input class="input" id="m-desc"/></div>
+      <div class="field-row"><label>Valor (R$)</label><input class="input" type="number" id="m-valor"/></div>
+      <div class="field-row"><label>Responsável</label>
+        <select class="input" id="m-owner"><option>Lucas</option><option>Esposa</option><option>Outros</option></select>
+      </div>`,
+    cartao:`
+      <div class="field-row"><label>Descrição</label><input class="input" id="m-desc"/></div>
+      <div class="field-row"><label>Categoria</label>
+        <select class="input" id="m-cat"><option>Alimentação</option><option>Casa</option><option>Saúde</option><option>Transporte</option><option>Lazer</option><option>Pessoal</option><option>Variado</option></select>
+      </div>
+      <div class="field-row"><label>Valor (R$)</label><input class="input" type="number" id="m-valor"/></div>`,
+    'conta-casa':`
+      <div class="field-row"><label>Nome da conta</label><input class="input" id="m-nome"/></div>
+      <div class="field-row"><label>Valor (R$)</label><input class="input" type="number" id="m-valor"/></div>
+      <div class="field-row"><label>Dia de vencimento</label><input class="input" type="number" id="m-dia" min="1" max="31"/></div>`,
+    mobilia:`
+      <div class="field-row"><label>Item</label><input class="input" id="m-item"/></div>
+      <div class="field-row"><label>Valor estimado (R$)</label><input class="input" type="number" id="m-valor"/></div>
+      <div class="field-row"><label>Prioridade</label>
+        <select class="input" id="m-prior"><option>alta</option><option>media</option><option>baixa</option></select>
+      </div>`,
+    viagem:`
+      <div class="field-row"><label>Destino</label><input class="input" id="m-dest"/></div>
+      <div class="field-row"><label>Data planejada</label><input class="input" type="date" id="m-data"/></div>
+      <div class="field-row"><label>Orçamento total (R$)</label><input class="input" type="number" id="m-orc"/></div>
+      <div class="field-row"><label>Já economizado (R$)</label><input class="input" type="number" id="m-eco" value="0"/></div>`,
+  }
+  document.getElementById('modal-title').textContent = titles[type]||'Novo item'
+  document.getElementById('modal-body').innerHTML = bodies[type]||''
+  document.getElementById('modal-bg').classList.add('open')
+  document.querySelector('#modal-body .input')?.focus()
+}
+
+window.closeModal = () => {
+  document.getElementById('modal-bg').classList.remove('open')
+  currentModal = null
+}
+
+window.saveModal = async () => {
+  const s = id => document.getElementById(id)?.value||''
+  const n = id => Number(document.getElementById(id)?.value)||0
+  const mes = currentMonth()
+  try {
+    if(currentModal==='renda') {
+      await addDoc(col('renda'), {desc:s('m-desc'),valor:n('m-valor'),owner:s('m-owner'),mes})
+      closeModal(); toast('Renda adicionada!'); goPage('orcamento')
+    } else if(currentModal==='cartao') {
+      await addDoc(col('cartao'), {descricao:s('m-desc'),cat:s('m-cat'),valor:n('m-valor'),data:new Date().toISOString().slice(0,10)})
+      closeModal(); toast('Lançamento adicionado!'); goPage('cartao')
+    } else if(currentModal==='conta-casa') {
+      await addDoc(col('contas'), {nome:s('m-nome'),cat:'casa',valor:n('m-valor'),dia:n('m-dia'),status:'pendente',mes})
+      closeModal(); toast('Conta adicionada!'); goPage('casa')
+    } else if(currentModal==='mobilia') {
+      await addDoc(col('mobilia'), {item:s('m-item'),valor:n('m-valor'),prioridade:s('m-prior'),status:'aguardando'})
+      closeModal(); toast('Item adicionado!'); goPage('casa')
+    } else if(currentModal==='viagem') {
+      await addDoc(col('viagens'), {dest:s('m-dest'),dataViagem:s('m-data'),orcamento:n('m-orc'),economizado:n('m-eco'),status:'planejando'})
+      closeModal(); toast('Viagem adicionada!'); goPage('viagens')
+    }
+  } catch(e) { toast('Erro ao salvar. Tente novamente.', false) }
+}
+
+window.deleteItem = async (colName, id, page) => {
+  if(!confirm('Remover este item?')) return
+  await deleteDoc(doc(db,'casal','dados',colName,id))
+  toast('Removido!')
+  goPage(page)
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+const bycat = cat => state.contas.filter(c=>c.cat===cat).reduce((s,c)=>s+Number(c.valor),0)
+
+</script>
+</body>
+</html>
