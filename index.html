@@ -227,7 +227,7 @@ const toast = (msg, ok=true) => {
 }
 
 // ─── ESTADO ───────────────────────────────────────────────────────────────────
-let state = { renda:[],contas:[],financiamento:{},consorcio:{},cartao:[],viagens:[],reserva:{},mobilia:[] }
+let state = { renda:[],contas:[],financiamento:{},consorcio:{},cartao:[],viagens:[],reserva:{},mobilia:[],metas:{financiamento:30,cartao:18,casa:12,consorcio:10,viagens:5,reserva:8} }
 let currentUser = null
 let currentModal = null
 
@@ -275,7 +275,7 @@ const singleDoc = name => doc(db, 'casal', 'config', name, 'v1')
 
 async function loadAll() {
   const mes = currentMonth()
-  const [renda, contas, cartao, viagens, mobilia, fin, cons, res, extrato] = await Promise.all([
+  const [renda, contas, cartao, viagens, mobilia, fin, cons, res, extrato, metasDoc] = await Promise.all([
     getDocs(query(col('renda'),    where('mes','==',mes))),
     getDocs(query(col('contas'),   where('mes','==',mes))),
     getDocs(col('cartao')),
@@ -285,6 +285,7 @@ async function loadAll() {
     getDoc(singleDoc('consorcio')),
     getDoc(singleDoc('reserva')),
     getDocs(col('extrato')),
+    getDoc(singleDoc('metas')),
   ])
   state.renda       = renda.docs.map(d=>({id:d.id,...d.data()}))
   state.contas      = contas.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.dia-b.dia)
@@ -294,6 +295,8 @@ async function loadAll() {
   state.financiamento = fin.exists() ? fin.data() : {credor:'Construtora',saldo:320000,parcela:3800,taxa:4,prazo:180,indexador:'CUB/SC'}
   state.consorcio   = cons.exists() ? cons.data() : {credito:80000,saldo:55000,parcela:1100,admin:'Porto Seguro',grupo:'412',cota:'47',mesesTotal:80,mesesPagos:31,taxaAdm:14,proximaAssembleia:'2026-04-12',contemplado:false}
   state.reserva     = res.exists() ? res.data() : {saldo:18000,meta:38400,aporte:860,tipo:'CDB liquidez diária'}
+  // Metas de orçamento (percentuais editáveis)
+  state.metas = metasDoc.exists() ? metasDoc.data() : {financiamento:30,cartao:18,casa:12,consorcio:10,viagens:5,reserva:8}
 
   // Carrega extratos do Firebase no analiseState (apenas se ainda não foi carregado na sessão)
   const doFirebase = extrato.docs.map(d=>({id:d.id,...d.data()}))
@@ -314,7 +317,7 @@ async function seedDados() {
   const mes = currentMonth()
   const rendas = [
     {desc:'Salário Lucas',valor:8000,owner:'Lucas',mes},
-    {desc:'Salário Esposa',valor:5500,owner:'Esposa',mes},
+    {desc:'Salário Fer',valor:5500,owner:'Fer',mes},
     {desc:'Outros',valor:300,owner:'Outros',mes},
   ]
   const contas = [
@@ -620,14 +623,17 @@ function renderOrcamento() {
       <div class="row-item"><span class="row-label"><strong>Total</strong></span><span class="row-value" style="color:var(--accent)">${fmt(total)}</span></div>
     </div>
     <div class="card">
-      <div class="section-title">Metas por categoria</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="section-title" style="margin:0">Metas por categoria</div>
+        <button class="btn btn-sm" onclick="abrirEditarMetas()" style="font-size:11px">✎ Editar %</button>
+      </div>
       ${[
-        {l:'Financiamento',v:Number(state.financiamento?.parcela||0),lim:total*.30},
-        {l:'Cartão',v:totalCartaoOrc,lim:total*.18},
-        {l:'Casa',v:bycat('casa'),lim:total*.12},
-        {l:'Consórcio',v:bycat('consorcio'),lim:total*.10},
-        {l:'Viagens',v:bycat('viagem'),lim:total*.05},
-        {l:'Reserva',v:bycat('reserva'),lim:total*.08},
+        {l:'Financiamento',v:Number(state.financiamento?.parcela||0),lim:total*(state.metas.financiamento/100)},
+        {l:'Cartão',v:totalCartaoOrc,lim:total*(state.metas.cartao/100)},
+        {l:'Casa',v:bycat('casa'),lim:total*(state.metas.casa/100)},
+        {l:'Consórcio',v:bycat('consorcio'),lim:total*(state.metas.consorcio/100)},
+        {l:'Viagens',v:bycat('viagem'),lim:total*(state.metas.viagens/100)},
+        {l:'Reserva',v:bycat('reserva'),lim:total*(state.metas.reserva/100)},
       ].map(c=>{
         const p=c.lim>0?Math.min(100,c.v/c.lim*100):0
         const over=c.v>c.lim
@@ -831,6 +837,62 @@ window.toggleParcelaDetalhe = (id) => {
   // Close all others first
   document.querySelectorAll('[id^="pd-"]').forEach(e => { if(e.id!==id) e.style.display='none' })
   el.style.display = el.style.display==='none' ? 'block' : 'none'
+}
+
+
+window.abrirEditarMetas = () => {
+  const m = state.metas
+  const total = Object.values(m).reduce((s,v)=>s+Number(v),0)
+  document.getElementById('modal-title').textContent = 'Editar metas por categoria (%)'
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">
+      Define o % máximo da renda para cada categoria. Soma atual: <span id="soma-metas" style="font-weight:500;color:${total>100?'var(--danger)':'var(--accent)'}">${total}%</span>
+    </div>
+    ${[
+      {key:'financiamento', label:'Financiamento'},
+      {key:'cartao',        label:'Cartão de crédito'},
+      {key:'casa',          label:'Contas da casa'},
+      {key:'consorcio',     label:'Consórcio'},
+      {key:'viagens',       label:'Viagens'},
+      {key:'reserva',       label:'Fundo de reserva'},
+    ].map(({key,label})=>`
+      <div class="field-row" style="margin-bottom:8px">
+        <label style="display:flex;justify-content:space-between">
+          <span>${label}</span>
+          <span style="color:var(--text3);font-size:11px">${fmt(state.renda.reduce((s,r)=>s+Number(r.valor),0) * (m[key]/100))} / mês</span>
+        </label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input class="input" type="number" id="meta-${key}" value="${m[key]}" min="0" max="100" step="1"
+            style="width:80px" oninput="atualizarSomaMetas()"/>
+          <span style="font-size:13px;color:var(--text2)">%</span>
+        </div>
+      </div>`).join('')}
+  `
+  document.getElementById('modal-save').onclick = salvarMetas
+  document.getElementById('modal-bg').classList.add('open')
+}
+
+window.atualizarSomaMetas = () => {
+  const keys = ['financiamento','cartao','casa','consorcio','viagens','reserva']
+  const soma = keys.reduce((s,k)=>s+Number(document.getElementById('meta-'+k)?.value||0),0)
+  const el = document.getElementById('soma-metas')
+  if(el){ el.textContent=soma+'%'; el.style.color=soma>100?'var(--danger)':soma>85?'var(--warn)':'var(--accent)' }
+}
+
+window.salvarMetas = async () => {
+  const data = {
+    financiamento: Number(document.getElementById('meta-financiamento').value)||0,
+    cartao:        Number(document.getElementById('meta-cartao').value)||0,
+    casa:          Number(document.getElementById('meta-casa').value)||0,
+    consorcio:     Number(document.getElementById('meta-consorcio').value)||0,
+    viagens:       Number(document.getElementById('meta-viagens').value)||0,
+    reserva:       Number(document.getElementById('meta-reserva').value)||0,
+  }
+  await setDoc(singleDoc('metas'), data)
+  state.metas = data
+  closeModal()
+  toast('Metas salvas!')
+  goPage('orcamento')
 }
 
 window.atualizarCatCartao = async (id, cat) => {
@@ -1090,7 +1152,7 @@ window.openModal = (type) => {
       <div class="field-row"><label>Descrição</label><input class="input" id="m-desc"/></div>
       <div class="field-row"><label>Valor (R$)</label><input class="input" type="number" id="m-valor"/></div>
       <div class="field-row"><label>Responsável</label>
-        <select class="input" id="m-owner"><option>Lucas</option><option>Esposa</option><option>Outros</option></select>
+        <select class="input" id="m-owner"><option>Lucas</option><option>Fer</option><option>Outros</option></select>
       </div>`,
     cartao:`
       <div class="field-row"><label>Descrição</label><input class="input" id="m-desc"/></div>
