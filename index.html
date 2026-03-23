@@ -504,7 +504,7 @@ const EDIT_CONFIGS = {
       <div class="field-row"><label>Responsável</label>
         <select class="input" id="e-owner">
           <option ${d.owner==='Lucas'?'selected':''}>Lucas</option>
-          <option ${d.owner==='Esposa'?'selected':''}>Esposa</option>
+          <option ${d.owner==='Fer'?'selected':''}>Fer</option>
           <option ${d.owner==='Outros'?'selected':''}>Outros</option>
         </select></div>`,
     save:async(id,s,n)=>updateDoc(doc(db,'casal','dados','renda',id),{desc:s('e-desc'),valor:n('e-valor'),owner:s('e-owner')}),
