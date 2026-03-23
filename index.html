@@ -1454,21 +1454,21 @@ function parsarCSV(texto, banco) {
 function detectarBanco(texto,nome){
   const t=(nome+texto.slice(0,400)).toLowerCase()
   const nLower=nome.toLowerCase()
-  // By filename
+  // By filename — mais específico primeiro
   if(nLower.includes('nubank')) return 'nubank'
-  if(nLower.includes('c6')||nLower.includes('c6bank')) return 'c6'
-  if(nLower.match(/fatura[_-]?\d{4}/)) return 'xp'  // XP filename pattern: Fatura_YYYY or Fatura2026
-  // By content
+  if(nLower.includes('c6bank')||nLower.includes('_c6_')) return 'c6'
+  if(nLower.includes('mercadopago')||nLower.includes('mercado-pago')||nLower.includes('mp-statement')||nLower.includes('mercado')) return 'mercadopago'
+  // XP: Fatura2026... (sem underscore antes do ano)
+  // C6: Fatura_2026... (com underscore antes do ano)
+  // Importante: checar C6 ANTES do XP pelo nome
+  if(nLower.match(/fatura_\d{4}/)) return 'c6'   // Fatura_2026-... → C6
+  if(nLower.match(/fatura\d{4}/))  return 'xp'   // Fatura2026-...  → XP
+  // By content (header da primeira linha é o mais confiável)
+  const firstLine=(texto.split('\n')[0]||'').toLowerCase()
+  if(firstLine.includes('estabelecimento')) return 'xp'
+  if(firstLine.includes('data de compra') || firstLine.includes('descri')) return 'c6'
   if(t.includes('nubank')) return 'nubank'
-  if(t.includes('estabelecimento;portador;valor;parcela')||t.includes('estabelecimento')) return 'xp'
-  if(t.includes('data de compra;nome no cart')||t.includes('cotacao')||t.includes('cotação')) return 'c6'
   if(t.includes('mercado pago')||t.includes('mercadopago')) return 'mercadopago'
-  // By CSV structure: check first line separator
-  const firstLine=texto.split('\n')[0]||''
-  if(firstLine.includes(';')) {
-    if(firstLine.includes('Estabelecimento')) return 'xp'
-    if(firstLine.includes('Descri')) return 'c6'
-  }
   return 'nubank'
 }
 
