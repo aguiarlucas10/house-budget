@@ -298,7 +298,13 @@ async function loadAll() {
     ))
     contasParaResetar.forEach(c=>{c.status='pendente'; c.ultimoReset=mesAtual})
   }
-  state.contas = contasDocs.sort((a,b)=>a.dia-b.dia)
+  // Filtra contas fora da vigência
+  const mesAtualStr = mesAtual  // e.g. '2026-03'
+  state.contas = contasDocs.filter(c=>{
+    if(c.vigenciaInicio && c.vigenciaInicio > mesAtualStr) return false
+    if(c.vigenciaFim    && c.vigenciaFim    < mesAtualStr) return false
+    return true
+  }).sort((a,b)=>a.dia-b.dia)
   state.cartao      = cartao.docs.map(d=>({id:d.id,...d.data()}))
   state.viagens     = viagens.docs.map(d=>({id:d.id,...d.data()}))
   state.mobilia     = mobilia.docs.map(d=>({id:d.id,...d.data()}))
@@ -481,8 +487,12 @@ function renderDashboard() {
         ? '<div class="alert a-ok">Todas as contas em dia!</div>'
         : alertas.map(c=>`<div class="alert ${c.status==='atrasado'?'a-danger':'a-warn'}" style="margin-bottom:8px">${c.nome}${c.valor>0?' — '+fmt(c.valor):''} · dia ${c.dia}</div>`).join('')}
       <div class="alert a-ok" style="margin-top:8px">Reserva: ${fmtPct((state.reserva?.saldo||0)/(state.reserva?.meta||1)*100)} da meta</div>
-      ${parcelasFuturas>0?`<div class="alert a-info" style="margin-top:8px">Parcelas futuras já comprometidas (próx. mês): <strong>${fmt(parcelasFuturas)}</strong></div>`:''}
-      ${totalCartaoAnalise>0?`<div class="alert a-warn" style="margin-top:8px">Total cartões (fatura mais recente): <strong>${fmt(totalCartaoAnalise)}</strong></div>`:''}
+      ${parcelasFuturas>0
+        ? '<div class="alert a-info" style="margin-top:8px">Parcelas futuras já comprometidas (próx. mês): <strong>'+fmt(parcelasFuturas)+'</strong></div>'
+        : ''}
+      ${totalCartaoAnalise>0
+        ? '<div class="alert a-warn" style="margin-top:8px">Total cartões (fatura mais recente): <strong>'+fmt(totalCartaoAnalise)+'</strong></div>'
+        : ''}
     </div>
   </div>
   <div class="card">
@@ -534,8 +544,26 @@ const EDIT_CONFIGS = {
           <option ${d.status==='pendente'?'selected':''}>pendente</option>
           <option ${d.status==='pago'?'selected':''}>pago</option>
           <option ${d.status==='atrasado'?'selected':''}>atrasado</option>
-        </select></div>`,
-    save:async(id,s,n)=>updateDoc(doc(db,'casal','dados','contas',id),{nome:s('e-nome'),valor:n('e-valor'),dia:n('e-dia'),status:s('e-status')}),
+        </select></div>
+      <div class="field-row"><label>Vigência</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1"><label style="font-size:11px;color:var(--text3)">De (mês/ano)</label>
+            <input class="input" type="month" id="e-vigInicio" value="${d.vigenciaInicio||''}" style="width:100%"/></div>
+          <span style="color:var(--text3);padding-top:18px">até</span>
+          <div style="flex:1"><label style="font-size:11px;color:var(--text3)">Até (mês/ano)</label>
+            <input class="input" type="month" id="e-vigFim" value="${d.vigenciaFim||''}" style="width:100%"/></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Deixe em branco para conta recorrente sem prazo</div>
+      </div>`,
+    save:async(id,s,n)=>{
+      const vigInicio = s('e-vigInicio') || null
+      const vigFim    = s('e-vigFim')    || null
+      return updateDoc(doc(db,'casal','dados','contas',id),{
+        nome:s('e-nome'), valor:n('e-valor'), dia:n('e-dia'), status:s('e-status'),
+        vigenciaInicio: vigInicio || null,
+        vigenciaFim:    vigFim    || null,
+      })
+    },
     page:'casa'
   },
   mobilia: {
@@ -678,7 +706,7 @@ function renderOrcamento() {
             '</div>'
           ).join('')
           const maisLink = doMesAll.length>20
-            ? '<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px"><a href="#" onclick="goPage('analise');return false" style="color:var(--accent)">Ver todos na análise →</a></div>'
+            ? "<div style='font-size:11px;color:var(--text3);text-align:center;padding:6px'><a href='#' onclick='goPage(\"analise\");return false' style='color:var(--accent)'>Ver todos na análise →</a></div>"
             : ''
           panel =
             '<div id="'+panelId+'" style="display:none;margin-top:8px;border-top:1px solid var(--border);padding-top:8px">'+
@@ -701,7 +729,7 @@ function renderOrcamento() {
 
         return `<div style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px${itensCat?';cursor:pointer':''}"
-            ${itensCat ? 'onclick="toggleOrcCat(''+panelId+'')"' : ''}>
+            ${itensCat ? "onclick=\"toggleOrcCat('"+panelId+"')\"" : ''}>
             <span style="font-size:13px">${c.l}${itensCat ? ' <span style="font-size:10px;color:var(--text3)">(detalhar ▾)</span>' : ''}</span>
             <span style="font-size:12px;color:${over?'var(--danger)':'var(--text2)'}">${fmt(c.v)} / ${fmt(c.lim)}</span>
           </div>
@@ -887,7 +915,7 @@ function renderCartao() {
       <div style="margin-top:16px">
         <div class="section-title">Lançamentos recentes</div>
         ${doMes.slice(0,8).map(l=>`<div class="row-item" style="font-size:12px">
-          <span style="color:var(--text2)">${l.desc.substring(0,30)}${l.parcela?` <span style="font-size:10px;background:var(--accent-light);color:var(--accent-dark);border-radius:3px;padding:1px 4px">${l.parcela}</span>`:''}</span>
+          <span style="color:var(--text2)">${l.desc.substring(0,30)}${l.parcela?' <span style="font-size:10px;background:var(--accent-light);color:var(--accent-dark);border-radius:3px;padding:1px 4px">'+l.parcela+'</span>':''}</span>
           <span style="font-weight:500">${fmt(l.valor)}</span>
         </div>`).join('')}
         ${doMes.length>8?`<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px">+${doMes.length-8} mais · <a href="#" onclick="goPage('analise');return false" style="color:var(--accent)">ver todos</a></div>`:''}
@@ -997,7 +1025,18 @@ function renderCasa() {
     <div class="tbl-wrap"><table>
       <tr><th>Conta</th><th>Valor</th><th>Dia</th><th>Status</th><th></th></tr>
       ${contas.map(c=>`<tr>
-        <td>${c.nome}</td><td>${c.valor>0?fmt(c.valor):'<span style="color:var(--text3);font-size:11px">— editar</span>'}</td><td>${c.dia}</td>
+        <td>
+          ${c.nome}
+          ${(c.vigenciaInicio||c.vigenciaFim)
+            ? '<span style="font-size:10px;color:var(--text3);display:block;margin-top:2px">'
+              +(c.vigenciaInicio?c.vigenciaInicio.slice(0,7).replace('-','/'):'…')
+              +'→'
+              +(c.vigenciaFim?c.vigenciaFim.slice(0,7).replace('-','/'):'∞')
+              +'</span>'
+            : ''}
+        </td>
+        <td>${c.valor>0?fmt(c.valor):'<span style="color:var(--text3);font-size:11px">— editar</span>'}</td>
+        <td>${c.dia}</td>
         <td><select class="input" style="padding:3px 6px;font-size:12px;width:auto" onchange="updateStatus('${c.id}',this.value)">
           <option ${c.status==='pago'?'selected':''}>pago</option>
           <option ${c.status==='pendente'?'selected':''}>pendente</option>
@@ -1247,7 +1286,17 @@ window.openModal = (type) => {
           <option value="viagem">Viagem</option>
         </select></div>
       <div class="field-row"><label>Valor (R$)</label><input class="input" type="number" id="m-valor"/></div>
-      <div class="field-row"><label>Dia de vencimento</label><input class="input" type="number" id="m-dia" min="1" max="31"/></div>`,
+      <div class="field-row"><label>Dia de vencimento</label><input class="input" type="number" id="m-dia" min="1" max="31"/></div>
+      <div class="field-row"><label>Vigência</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1"><label style="font-size:11px;color:var(--text3)">De (mês/ano)</label>
+            <input class="input" type="month" id="m-vigInicio" style="width:100%"/></div>
+          <span style="color:var(--text3);padding-top:18px">até</span>
+          <div style="flex:1"><label style="font-size:11px;color:var(--text3)">Até (mês/ano)</label>
+            <input class="input" type="month" id="m-vigFim" style="width:100%"/></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Deixe em branco para conta recorrente sem prazo</div>
+      </div>`,
     mobilia:`
       <div class="field-row"><label>Item</label><input class="input" id="m-item"/></div>
       <div class="field-row"><label>Valor estimado (R$)</label><input class="input" type="number" id="m-valor"/></div>
@@ -1285,7 +1334,9 @@ window.saveModal = async () => {
       await addDoc(col('cartao'), {descricao:s('m-desc'),cat:s('m-cat'),valor:n('m-valor'),data:new Date().toISOString().slice(0,10)})
       closeModal(); toast('Lançamento adicionado!'); goPage('cartao')
     } else if(currentModal==='conta-casa') {
-      await addDoc(col('contas'), {nome:s('m-nome'),cat:s('m-cat')||'casa',valor:n('m-valor'),dia:n('m-dia'),status:'pendente'})
+      const vigInicio = s('m-vigInicio') || null
+      const vigFim    = s('m-vigFim')    || null
+      await addDoc(col('contas'), {nome:s('m-nome'),cat:s('m-cat')||'casa',valor:n('m-valor'),dia:n('m-dia'),status:'pendente',...(vigInicio?{vigenciaInicio:vigInicio}:{}),...(vigFim?{vigenciaFim:vigFim}:{})})
       closeModal(); toast('Conta adicionada!'); goPage('casa')
     } else if(currentModal==='mobilia') {
       await addDoc(col('mobilia'), {item:s('m-item'),valor:n('m-valor'),prioridade:s('m-prior'),status:'aguardando'})
